@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Style Studio</string>
+    <string name="title_activity_main">Style Studio</string>
+    <string name="package_name">de.stylestudio.app</string>
+    <string name="custom_url_scheme">de.stylestudio.app</string>
+</resources>

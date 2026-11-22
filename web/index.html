@@ -1,0 +1,536 @@
+<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="theme-color" content="#fff5fa"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><title>Mein Style-Studio</title>
+<style>
+:root{--bg:#fff5fa;--pn:#fff;--fg:#4a2040;--ac:#e0409a;--bd:#f3c6df;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#2a1426;--pn:#3a1d34;--fg:#ffe8f5;--ac:#ff6fbd;--bd:#6a3a5e;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#2a1426;--pn:#3a1d34;--fg:#ffe8f5;--ac:#ff6fbd;--bd:#6a3a5e;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px system-ui,sans-serif;display:flex;flex-direction:column;-webkit-tap-highlight-color:transparent}
+#stage{flex:1;min-height:0;position:relative;display:flex;justify-content:center}
+#stage svg{height:100%;max-width:100%}
+#rnd{position:absolute;top:8px;right:8px}
+#ui{background:var(--pn);border-top:2px solid var(--bd);border-radius:18px 18px 0 0;padding:6px 8px 8px}
+.row{display:flex;gap:6px;overflow-x:auto;padding:4px 2px}
+button{font:inherit;color:var(--fg);background:var(--pn);border:2px solid var(--bd);border-radius:14px;min-height:44px;padding:4px 12px;white-space:nowrap;cursor:pointer}
+button.on{border-color:var(--ac);background:var(--ac);color:#fff}
+.t{min-width:62px;display:flex;flex-direction:column;align-items:center;padding:2px 6px;font-size:20px}
+.t small{font-size:11px}
+.sw{min-width:44px;width:44px;padding:0;border-radius:50%;border-width:3px}
+.sw.on{border-color:var(--fg);background-clip:padding-box}
+#rnd,#pic{background:var(--ac);color:#fff;border-color:var(--ac)}
+#pic{position:absolute;top:8px;left:8px}
+button.f{box-shadow:0 0 0 2px var(--fg) inset}
+#hdl{display:flex;justify-content:center;align-items:center;width:100%;min-height:30px;padding:0;border:0;background:none;font-size:13px;opacity:.85;border-radius:10px}
+#hdl::before{content:'';width:34px;height:4px;border-radius:2px;background:var(--bd);margin-right:8px}
+#ui.min #tabs,#ui.min #opts{display:none}
+#opts{max-height:34vh;overflow-y:auto}
+#dlg{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:9;padding:20px}
+#dlg.on{display:flex}
+#dlg div{background:var(--pn);color:var(--fg);border-radius:18px;padding:18px;max-width:320px;text-align:center}
+#dlg p{margin:0 0 14px}#dlg button{margin:4px}
+#toast{position:fixed;left:50%;bottom:30%;transform:translateX(-50%);background:#000c;color:#fff;padding:10px 16px;border-radius:14px;display:none;z-index:10}
+#rl,#rr{position:absolute;top:45%;width:48px;padding:0;font-size:20px;opacity:.85}#rl{left:8px}#rr{right:8px}
+#stage{touch-action:pan-y;user-select:none}.row small{align-self:center;opacity:.7;padding:0 4px;white-space:nowrap}
+*{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+</style></head><body>
+<div id="stage"><svg id="fig" viewBox="0 0 300 510" xmlns="http://www.w3.org/2000/svg"></svg><button id="pic">📷 Foto</button><button id="rnd">🎲 Zufall</button><button id="rl" aria-label="Nach links drehen">◀</button><button id="rr" aria-label="Nach rechts drehen">▶</button></div>
+<div id="dlg"><div><p id="dmsg"></p><button id="dno">Abbrechen</button><button id="dyes" class="on">Ja</button></div></div><div id="toast"></div>
+<div id="ui"><button id="hdl" aria-label="Auswahl aus- oder einblenden"><span id="hl">▼ Ausblenden</span></button><div class="row" id="tabs"></div><div id="opts"></div></div>
+<script>
+const $=s=>document.querySelector(s);
+const SKIN=['#fde0cc','#f6c9a6','#e5a67c','#c68558','#9a6340','#6b4228'];
+const HAIR=['#2b1b17','#5a3825','#9a6233','#e8c36a','#c4432b','#f06aa8','#4a7fd6','#8e5bd0','#efe6d2','#b9803f','#2fb5b0','#4caf50'];
+const EYE=['#5a3825','#2f7fd0','#2f9a5a','#7a8a3a','#8a5bd0','#555','#d87aa8','#8a9aa8','#c9a227','#2fb5b0'];
+const CLO=['#ff6fa8','#e0309a','#a05bd8','#4a8ff0','#3cc3b4','#ffd54a','#ff8a3d','#f4f4f4','#333','#d94040','#7fdcf5','#b8f08a','#c89b6a','#8b5a2b','#ffd1e6','#1b3a8a','#2e7d32','#800020','#000000','#ffffff'];
+const BG=['#ffe3f1','#dff1ff','#e6ffe9','#fff3d6','#efe3ff','#fde8d8','#e0f7f4','#f3e0ff','#ffeaa7','#dfe6f5','#000000','#ffffff'];
+const PETC=['#f2d9b3','#c8864a','#6b4a3a','#f5f5f5','#8a8a8a','#2a2a2a','#e8a050','#ffd54a','#4caf50','#4a8ff0','#ffd1e6','#c9a0dc'];
+const PET=(k,fc,c2,pat,acc)=>{const ol=dk(fc,.5),lf=lt(fc,.4),df=dk(fc,.15),S1=`stroke="${ol}" stroke-width="1.1" stroke-linejoin="round"`,eyeD=(x,y,r=2.6)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="#1a1114"/><circle cx="${x-r*.3}" cy="${y-r*.35}" r="${r*.35}" fill="#fff"/>`;
+const collar=y=>acc==1?`<path d="M-12 ${y}Q0 ${y+6} 12 ${y}" fill="none" stroke="${c2}" stroke-width="3.5" stroke-linecap="round"/><circle cx="0" cy="${y+5}" r="2.6" fill="#ffd54a" stroke="#b8901a" stroke-width=".6"/>`:acc==2?`<ellipse cx="-5" cy="${y+3}" rx="5.5" ry="3.2" fill="${c2}" transform="rotate(-25 -5 ${y+3})"/><ellipse cx="5" cy="${y+3}" rx="5.5" ry="3.2" fill="${c2}" transform="rotate(25 5 ${y+3})"/><circle cx="0" cy="${y+3}" r="2" fill="${dk(c2,.2)}"/>`:acc==3?`<path d="M-12 ${y}Q0 ${y+6} 12 ${y}" fill="none" stroke="${c2}" stroke-width="3" stroke-linecap="round"/><circle cx="0" cy="${y+6}" r="3.2" fill="#ffd54a" stroke="#b8901a" stroke-width=".7"/><path d="M0 ${y+4}v4" stroke="#b8901a" stroke-width=".7"/>`:'';
+if(k<=3){const pup=k==2,pug=k==3,hr_=pup?20:17,hy=pup?-37:-43,by=pup?-13:-17,bry=pup?14:18,earC=pug?'#3a2a22':df,faceC=pug?'#3a2a22':lf;
+let g=`<path d="M14 ${by+2}Q30 ${by-14} 22 ${by-26}" fill="none" stroke="${ol}" stroke-width="6.5" stroke-linecap="round"/><path d="M14 ${by+2}Q30 ${by-14} 22 ${by-26}" fill="none" stroke="${fc}" stroke-width="4.5" stroke-linecap="round"/>`;
+g+=E(0,by,17,bry,fc,S1)+E(0,by+2,9,bry*.7,lf)+E(-8,-6,4.5,6.5,fc,S1)+E(8,-6,4.5,6.5,fc,S1)+E(-8,-.5,5.5,3,lf,S1)+E(8,-.5,5.5,3,lf,S1);
+if(pat==1)g+=E(-9,by-2,7,9,c2,'opacity=".9"');
+if(pat==2)for(const dx of[-10,-3,4,11])g+=`<path d="M${dx} ${by-bry+3}Q${dx+2} ${by} ${dx} ${by+bry-4}" fill="none" stroke="${c2}" stroke-width="2.4" opacity=".7"/>`;
+g+=E(-hr_*.9,hy-2,6,pup?13:11,earC,`transform="rotate(18 ${-hr_*.9} ${hy-2})" ${S1}`)+E(hr_*.9,hy-2,6,pup?13:11,earC,`transform="rotate(-18 ${hr_*.9} ${hy-2})" ${S1}`)+`<circle cx="0" cy="${hy}" r="${hr_}" fill="${fc}" ${S1}/>`;
+if(pat==1)g+=`<circle cx="7" cy="${hy-3}" r="8.5" fill="${c2}" opacity=".9"/>`;
+g+=E(0,hy+6,9.5,7.5,faceC,pug?'':S1)+E(0,hy+2,3.3,2.5,'#2a1a1a')+`<path d="M0 ${hy+4}v3M0 ${hy+7}Q-3 ${hy+10} -6 ${hy+8}M0 ${hy+7}Q3 ${hy+10} 6 ${hy+8}" fill="none" stroke="${pug?'#fff':ol}" stroke-width="1" stroke-linecap="round"/>`+E(0,hy+10.5,2.6,3,'#ff8aa8')+eyeD(-7,hy-4,pup?3.2:2.7)+eyeD(7,hy-4,pup?3.2:2.7);
+if(pug)g+=`<path d="M-5 ${hy-12}Q0 ${hy-9} 5 ${hy-12}M-4 ${hy-9}Q0 ${hy-6.5} 4 ${hy-9}" fill="none" stroke="#1a1114" stroke-width=".9" opacity=".6"/>`;
+return g+collar(hy+hr_*.62)}
+if(k<=5){const kit=k==5,hr_=kit?16:14,hy=kit?-38:-46,bx=kit?13:12,bry=kit?17:22,by=-bry+1;
+let g=`<path d="M12 -4Q34 -6 30 ${kit?-26:-36}" fill="none" stroke="${ol}" stroke-width="7" stroke-linecap="round"/><path d="M12 -4Q34 -6 30 ${kit?-26:-36}" fill="none" stroke="${fc}" stroke-width="5" stroke-linecap="round"/>`;
+g+=E(0,by,bx,bry,fc,S1)+E(0,by+4,bx*.55,bry*.7,lf)+E(-6,-3,4.5,5,fc,S1)+E(6,-3,4.5,5,fc,S1)+E(-6,0,5,2.6,lf,S1)+E(6,0,5,2.6,lf,S1);
+if(pat==2)for(const dy of[-.5,-.1,.3])g+=`<path d="M${-bx+1} ${by+bry*dy}Q${-bx+4} ${by+bry*dy+2} ${-bx+7} ${by+bry*dy+1}M${bx-1} ${by+bry*dy}Q${bx-4} ${by+bry*dy+2} ${bx-7} ${by+bry*dy+1}" fill="none" stroke="${c2}" stroke-width="2" opacity=".7"/>`;
+if(pat==1)g+=E(7,by,6,8,c2,'opacity=".9"');
+g+=`<path d="M${-hr_*.85} ${hy-hr_*.3}L${-hr_*.7} ${hy-hr_*1.5}L${-hr_*.15} ${hy-hr_*.85}Z" fill="${fc}" ${S1}/><path d="M${hr_*.85} ${hy-hr_*.3}L${hr_*.7} ${hy-hr_*1.5}L${hr_*.15} ${hy-hr_*.85}Z" fill="${fc}" ${S1}/><path d="M${-hr_*.7} ${hy-hr_*.7}L${-hr_*.62} ${hy-hr_*1.2}L${-hr_*.3} ${hy-hr_*.85}Z M${hr_*.7} ${hy-hr_*.7}L${hr_*.62} ${hy-hr_*1.2}L${hr_*.3} ${hy-hr_*.85}Z" fill="#ffb5c8"/><circle cx="0" cy="${hy}" r="${hr_}" fill="${fc}" ${S1}/>`;
+if(pat==1)g+=`<circle cx="-6" cy="${hy-3}" r="7.5" fill="${c2}" opacity=".9"/>`;
+if(pat==2)g+=`<path d="M0 ${hy-hr_}v6M-5 ${hy-hr_+1}l1 5M5 ${hy-hr_+1}l-1 5" fill="none" stroke="${c2}" stroke-width="1.8" opacity=".75"/>`;
+g+=E(-6,hy-1,3.2,kit?4:3.6,'#8be08a')+E(6,hy-1,3.2,kit?4:3.6,'#8be08a')+E(-6,hy-1,1.1,3.3,'#1a1114')+E(6,hy-1,1.1,3.3,'#1a1114')+`<circle cx="-7" cy="${hy-2.5}" r=".9" fill="#fff"/><circle cx="5" cy="${hy-2.5}" r=".9" fill="#fff"/><path d="M-2 ${hy+4}L2 ${hy+4}L0 ${hy+6}Z" fill="#ff8aa8"/><path d="M0 ${hy+6}Q-2 ${hy+8.5} -5 ${hy+7.5}M0 ${hy+6}Q2 ${hy+8.5} 5 ${hy+7.5}M-13 ${hy+3}L-6 ${hy+5}M-13 ${hy+7}L-6 ${hy+6}M13 ${hy+3}L6 ${hy+5}M13 ${hy+7}L6 ${hy+6}" fill="none" stroke="${ol}" stroke-width=".8" stroke-linecap="round"/>`;
+return g+collar(hy+hr_*.7)}
+if(k==6){const hy=-38,hr_=15;let g=`<circle cx="18" cy="-8" r="6.5" fill="#fff" ${S1}/>`+E(0,-16,15,17,fc,S1)+E(0,-14,8,11,lf)+E(-7,-3,4.5,5.5,fc,S1)+E(7,-3,4.5,5.5,fc,S1)+E(-7,0,5.5,2.6,lf,S1)+E(7,0,5.5,2.6,lf,S1);
+if(pat==1)g+=E(-7,-18,6,8,c2,'opacity=".9"');
+g+=E(-6,hy-24,5,15,fc,`transform="rotate(-8 -6 ${hy-24})" ${S1}`)+E(6,hy-24,5,15,fc,`transform="rotate(8 6 ${hy-24})" ${S1}`)+E(-6,hy-24,2.4,11,'#ffb5c8',`transform="rotate(-8 -6 ${hy-24})"`)+E(6,hy-24,2.4,11,'#ffb5c8',`transform="rotate(8 6 ${hy-24})"`)+`<circle cx="0" cy="${hy}" r="${hr_}" fill="${fc}" ${S1}/>`;
+if(pat==1)g+=`<circle cx="6" cy="${hy-3}" r="7" fill="${c2}" opacity=".9"/>`;
+if(pat==2)g+=`<path d="M-3 ${hy-hr_}v5M3 ${hy-hr_}v5" stroke="${c2}" stroke-width="2" opacity=".7"/>`;
+g+=E(0,hy+5,7,5.5,lf)+eyeD(-6,hy-3,2.6)+eyeD(6,hy-3,2.6)+`<path d="M-1.8 ${hy+2}L1.8 ${hy+2}L0 ${hy+4}Z" fill="#ff8aa8"/><path d="M0 ${hy+4}v2.5M0 ${hy+6.5}Q-2 ${hy+8.5} -4 ${hy+7.5}M0 ${hy+6.5}Q2 ${hy+8.5} 4 ${hy+7.5}" fill="none" stroke="${ol}" stroke-width=".8"/><rect x="-1.6" y="${hy+6.4}" width="1.5" height="2.6" fill="#fff"/><rect x=".1" y="${hy+6.4}" width="1.5" height="2.6" fill="#fff"/><path d="M-14 ${hy+3}L-7 ${hy+4.5}M-14 ${hy+7}L-7 ${hy+6}M14 ${hy+3}L7 ${hy+4.5}M14 ${hy+7}L7 ${hy+6}" stroke="${ol}" stroke-width=".7"/>`;
+return g+collar(hy+hr_*.65)}
+if(k==7){let g=E(0,-13,21,13,fc,S1)+E(-10,-5,5,5,lf,S1)+E(10,-5,5,5,lf,S1);
+if(pat==2)g+=`<path d="M-14 -22Q-6 -26 0 -22M0 -22Q6 -26 14 -22" fill="none" stroke="${c2}" stroke-width="2" opacity=".7"/>`;
+g+=E(0,-25,15,12.5,fc,S1)+E(-11,-34,4,5.5,df,`transform="rotate(-25 -11 -34)" ${S1}`)+E(11,-34,4,5.5,df,`transform="rotate(25 11 -34)" ${S1}`)+E(0,-21,7.5,5.5,lf);
+if(pat==1)g+=`<path d="M-15 -28Q-8 -38 0 -36L0 -22Q-8 -20 -15 -28Z" fill="${c2}" opacity=".85"/>`;
+g+=eyeD(-6,-27,2.5)+eyeD(6,-27,2.5)+E(0,-23,2,1.5,'#ff8aa8')+`<path d="M0 -21.5v2.5M0 -19Q-2 -17.5 -4 -18.5M0 -19Q2 -17.5 4 -18.5" fill="none" stroke="${ol}" stroke-width=".8"/>`;
+return g+collar(-14)}
+let g=`<path d="M4 -10L16 3L11 5L2 -6Z" fill="${df}" ${S1}/><path d="M-3 -4v4M3 -4v4" stroke="#e8a050" stroke-width="1.8" stroke-linecap="round"/>`+E(0,-19,11,16,fc,S1)+E(0,-16,6.5,11,lf)+E(-7.5,-19,4.5,11,df,`transform="rotate(8 -7.5 -19)" ${S1}`)+E(7.5,-19,4.5,11,df,`transform="rotate(-8 7.5 -19)" ${S1}`);
+for(const dy of[-24,-19,-14])g+=`<path d="M-10 ${dy}h5M5 ${dy}h5" stroke="${c2}" stroke-width="1.4" opacity=".7"/>`;
+g+=`<circle cx="0" cy="-38" r="10.5" fill="${lt(fc,.35)}" ${S1}/><circle cx="-7" cy="-34" r="2.6" fill="${c2}" opacity=".85"/><circle cx="7" cy="-34" r="2.6" fill="${c2}" opacity=".85"/><path d="M-3 -36Q0 -39 3 -36Q2 -31 0 -30Q-2 -31 -3 -36Z" fill="#ffae42" stroke="#b8741a" stroke-width=".7"/>`+eyeD(-5,-40,2.3)+eyeD(5,-40,2.3)+`<path d="M-2 -48Q0 -53 2 -48" fill="none" stroke="${ol}" stroke-width="1.1"/>`;
+return g};
+const LIPS=['#c8405e','#e0507a','#d94040','#b06070','#f08aa8','#a05bd8'],SHAD=['#c9a0dc','#f4a6c0','#7fb3ff','#8fd6a8','#e8c36a','#ff9a6b'];
+let VIEW=0;const S={xs:new Array(20).fill(0),xv:new Array(20).fill(0),xc:[5,0,5,5,8,0,5,8,5,0,5,0,5,5,7,0,3,5,9,8],sex:0,beard:0,pet:0,petC:0,petC2:0,petPat:0,petPos:0,petAcc:1,petS:1,bgS:0,bgP:0,bgC2:0,pose:0,fr:0,fk:0,lipC:0,lid:0,lidC:0,sock:0,sockC:7,topD:0,topC2:5,botD:0,botC2:5,age:1,skin:1,hair:0,hairC:1,eye:0,eyeC:1,nose:0,mouth:0,top:0,topC:0,bot:1,botC:3,shoe:0,shoeC:7,acc:0,accC:5,bg:0};
+const CATS=[
+{i:'🧑',n:'Person',s:'age',o:['Kind','Teen','Erwachsen'],ls:'Alter',e:[['sex','Geschlecht',['Mädchen/Frau','Junge/Mann']]]},
+{i:'🧍',n:'Pose',s:'pose',o:['Gerade','Hand in der Hüfte','Model','Winken','Hände hinten','Hände vorn']},
+{i:'🎨',n:'Haut',c:'skin',p:SKIN},
+{i:'💇',n:'Haare',s:'hair',o:['Lang','Wellig','Bob','Zöpfe','Dutt','Pferdeschwanz','Kurz','Halb offen','Doppel-Dutt','Locken','Seitenzopf'],om:['Kurz','Seitenscheitel','Igel','Undercut','Locken','Mittellang','Surfer','Dutt','Pferdeschwanz','Afro','Pilzkopf'],ovm:[6,26,22,23,24,25,27,4,5,29,30],c:'hairC',p:HAIR},
+{i:'🧔',n:'Bart',s:'beard',o:['Keiner','Dreitagebart','Vollbart','Schnurrbart','Kinnbart','Koteletten'],m:1},
+{i:'💁',n:'Pony',s:'fr',o:['Seitlich','Gerade','Mittelscheitel','Hochgesteckt']},
+{i:'👁',n:'Augen',s:'eye',o:['Rund','Mandel','Wimpern','Verträumt','Katze','Reh','Sanft','Fröhlich'],c:'eyeC',p:EYE},
+{i:'👃',n:'Nase',s:'nose',o:['Klein','Stupsnase','Linie','Breit']},
+{i:'👄',n:'Mund',s:'mouth',o:['Lächeln','Strahlen','Kussmund','Schmollen']},
+{i:'💄',n:'Make-up',s:'fk',o:['Keine','Wenige','Viele'],ls:'Sommersprossen',c:'lipC',p:LIPS,lc:'Lippen',d:['lid','lidC'],dl:'Lidschatten',dlist:['Aus','An'],dc:'Farbe',dp:SHAD},
+{i:'👚',n:'Oberteil',s:'top',o:['T-Shirt','Top','Langarm','Mieder','Hoodie','Bluse','Schulterfrei','Crop-Top','Ohne'],om:['T-Shirt','Poloshirt','Hemd','Langarm','Pullover','Hoodie','Kapuzenjacke','Tanktop','Trikot','Ohne'],ovm:[0,9,10,2,11,4,13,1,12,8],c:'topC',p:CLO,d:['topD','topC2']},
+{i:'👗',n:'Unten',s:'bot',o:['Jeans','Shorts','Rock kurz','Rock lang','Ballkleid','Leggings','Capri','Midirock','Faltenrock','Tüllrock','Schlaghose','Ohne'],om:['Jeans','Shorts','Chino','Jogginghose','Cargo','Bermuda','Schlaghose','Ohne'],ovm:[0,1,12,13,14,15,10,11],c:'botC',p:CLO,d:['botD','botC2']},
+{i:'🧦',n:'Strümpfe',s:'sock',o:['Keine','Socken','Kniestrümpfe','Strumpfhose'],c:'sockC',p:CLO},
+{i:'👠',n:'Schuhe',s:'shoe',o:['Sneaker','Stiefel','Ballerinas','Absätze','Sandalen','Chucks','Kniestiefel','Barfuß'],om:['Sneaker','Chucks','Stiefel','Halbschuhe','Sandalen','Barfuß'],ovm:[0,5,1,8,4,7],c:'shoeC',p:CLO},
+{i:'👑',n:'Kopf',x:1,xg:[0,1,6,5,12,13,3,7,17],xgm:[0,5,12,3,7,19]},
+{i:'💍',n:'Schmuck',x:1,xg:[4,2,8,9,10,14,11,15,16],xgm:[4,2,8,9,10,14,11,15,16,18]},
+{i:'🐾',n:'Haustier',s:'pet',o:['Keins','Hund','Welpe','Mops','Katze','Kätzchen','Hase','Meerschweinchen','Wellensittich'],ls:'Tier',c:'petC',p:PETC,lc:'Fellfarbe',e:[['petPat','Muster',['Einfarbig','Flecken','Streifen']],['petPos','Position',['Links','Rechts','Auf dem Arm','Auf der Schulter']],['petS','Größe',['Klein','Mittel','Groß']]],d:['petAcc','petC2'],dl:'Halsband',dlist:['Keins','Halsband','Schleife','Glöckchen'],dc:'Zweitfarbe',dp:CLO},
+{i:'🖼',n:'Hintergrund',s:'bgS',o:['Keine','Schloss','Wolken','Wald','Strand','Blumenwiese','Regenbogen','Sternenhimmel','Stadt','Ankleidezimmer','Disco'],ls:'Szene',c:'bg',p:BG,lc:'Farbe',d:['bgP','bgC2'],dl:'Muster',dlist:['Keines','Punkte','Streifen','Karo','Herzen','Sterne','Zickzack','Wellen','Blümchen','Diagonal','Konfetti'],dc:'Musterfarbe',dp:CLO}];
+const DECO=['Keine','Stern','Herz','Punkte','Streifen','Blümchen'],EXN=['Krone','Schleife','Kette','Brille','Ohrringe','Hut','Haarreif','Sonnenbrille','Schal','Gürtel','Armband','Tasche','Mütze','Blume','Handschuhe','Schirm','In der Hand','Glitzer','Krawatte','Kopfhörer'],XVN=[['Krone','Tiara','Diadem','Blumenkranz'],['Schleife','Große Schleife','Spange Stern','Spange Herz'],['Anhänger','Perlen','Choker','Lang','Herz','Stern'],['Rund','Eckig','Katzenaugen','Herz'],['Stecker','Creolen','Herz','Stern','Tropfen'],['Sonnenhut','Baskenmütze','Cap','Strohhut','Fischerhut'],['Haarreif','Mit Schleife','Stirnband','Blumen'],['Rund','Eckig','Katzenaugen','Herz'],['Schal','Halstuch','Rüschen','Fliege'],['Schmal','Breit','Kette','Schleife'],['Armband','Armreif','Uhr','Mehrere'],['Handtasche','Umhängetasche','Rucksack','Einkaufstasche','Mini'],['Bommel','Katzenohren','Hasenohren','Strick'],['Gänseblümchen','Rose','Sonnenblume','Mehrere'],['Kurz','Lang','Fingerlos'],['Regenschirm','Sonnenschirm'],['Blumenstrauß','Luftballon','Eistüte','Herzballon'],['Sternchen','Herzchen','Strass'],['Krawatte','Fliege','Kurz','Gepunktet'],['Over-Ear','Headset','Ohrstöpsel']];let F=0;
+
+const star=(x,y,r)=>{let p='';for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,k=i%2?r*.45:r;p+=(i?'L':'M')+(x+k*Math.cos(a)).toFixed(1)+' '+(y+k*Math.sin(a)).toFixed(1)}return `<path d="${p}Z"/>`};
+const heart=(x,y,r)=>`<path d="M${x} ${y+r}C${x-r*1.4} ${y-r*.1} ${x-r*.6} ${y-r*1.1} ${x} ${y-r*.4}C${x+r*.6} ${y-r*1.1} ${x+r*1.4} ${y-r*.1} ${x} ${y+r}Z"/>`;
+const flower=(x,y,r)=>{let g='';for(let i=0;i<5;i++){const a=i*1.2566;g+=`<circle cx="${x+r*.7*Math.cos(a)}" cy="${y+r*.7*Math.sin(a)}" r="${r*.45}"/>`}return g+`<circle cx="${x}" cy="${y}" r="${r*.35}" fill="#ffd54a"/>`};
+const dec=(k,c,id,cd,x0,x1,y0,y1,r)=>{if(!k)return'';let g='';
+if(k==4){for(let y=y0;y<y1;y+=r*2.2)g+=`<rect x="${x0}" y="${y}" width="${x1-x0}" height="${r}"/>`}
+else{const dx=r*3.4,dy=r*3,rows=Math.ceil((y1-y0)/dy)+1;for(let i=0;i<rows;i++)for(let x=x0+(i%2?dx/2:0);x<x1;x+=dx){const y=y0+dy/2+i*dy;g+=k==1?star(x,y,r):k==2?heart(x,y,r):k==3?`<circle cx="${f1(x)}" cy="${f1(y)}" r="${f1(r*.6)}"/>`:flower(x,y,r)}}
+return `<clipPath id="c${id}"><path d="${cd}"/></clipPath><g fill="${c}" clip-path="url(#c${id})">${g}</g>`};
+const RO=(l,k,a)=>`<div class="row"><small>${l}</small>${a.map((n,i)=>`<button class="${S[k]==i?'on':''}" data-s="${k}" data-v="${i}">${n}</button>`).join('')}</div>`;
+const RC=(l,k,p)=>`<div class="row"><small>${l}</small>${p.map((c,i)=>`<button class="sw${S[k]==i?' on':''}" style="background:${c}" data-s="${k}" data-v="${i}" aria-label="Farbe ${i+1}"></button>`).join('')}</div>`;
+const EXUI=g=>`<div class="row">${g.map(i=>`<button class="${S.xs[i]?'on':''}${F==i?' f':''}" data-x="${i}">${EXN[i]}</button>`).join('')}</div>`+(XVN[F].length>1?`<div class="row"><small>Form: ${EXN[F]}</small>${XVN[F].map((n,i)=>`<button class="${S.xv[F]==i?'on':''}" data-xv="${i}">${n}</button>`).join('')}</div>`:'')+`<div class="row"><small>Farbe: ${EXN[F]}</small>${CLO.map((c,i)=>`<button class="sw${S.xc[F]==i?' on':''}" style="background:${c}" data-xc="${i}" aria-label="Farbe ${i+1}"></button>`).join('')}</div>`;
+const DM=[{hr:38,tor:90,leg:126,sw:21,ww:15,hw:17,lw:11,aw:7.5},{hr:43,tor:104,leg:172,sw:27,ww:19,hw:21,lw:12,aw:8.5},{hr:38,tor:116,leg:200,sw:32,ww:23,hw:24,lw:14,aw:9.5}];
+const D=[{hr:38,tor:90,leg:126,sw:21,ww:14,hw:18,lw:11,aw:7},{hr:43,tor:104,leg:172,sw:24,ww:15,hw:23,lw:11,aw:7},{hr:38,tor:116,leg:200,sw:27,ww:16,hw:27,lw:13,aw:8}];
+const E=(x,y,rx,ry,f,ex='')=>`<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${f}" ${ex}/>`;
+const R=(x,y,w,h,f,r=0)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${f}"/>`;
+const ST=(c,w=2)=>`fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round"`;
+const BGP=['Keines','Punkte','Streifen','Karo','Herzen','Sterne','Zickzack','Wellen','Blümchen','Diagonal','Konfetti'];
+const skyG=(a,b,id)=>`<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
+const cloud=(x,y,k,c='#fff',o=1)=>`<g fill="${c}" opacity="${o}"><circle cx="${x}" cy="${y}" r="${14*k}"/><circle cx="${x+16*k}" cy="${y-8*k}" r="${18*k}"/><circle cx="${x+36*k}" cy="${y}" r="${15*k}"/><rect x="${x-6*k}" y="${y}" width="${48*k}" height="${12*k}" rx="${6*k}"/></g>`;
+const pine=(x,y,h,c)=>`<rect x="${x-3}" y="${y-h*.22}" width="6" height="${h*.22}" fill="#8a5a3a"/>`+[0,1,2].map(i=>`<polygon points="${x-h*(.3-i*.07)},${y-h*(.2+i*.26)} ${x},${y-h*(.55+i*.26)} ${x+h*(.3-i*.07)},${y-h*(.2+i*.26)}" fill="${c}"/>`).join('');
+const SCN=[null,
+()=>`<defs>${skyG('#ffd3ea','#cfe6ff','s1')}${skyG('#9be08f','#5bb468','g1')}</defs><rect width="300" height="510" fill="url(#s1)"/><circle cx="240" cy="70" r="26" fill="#fff6c8"/>${cloud(30,90,1,'#fff',.9)}${cloud(170,50,.8,'#fff',.8)}<path d="M0 400Q80 360 160 395T300 380V510H0Z" fill="#b8e6a8"/><g transform="translate(118 150) scale(.62)"><rect x="60" y="330" width="180" height="112" fill="#efe7f6"/>${[...Array(14).keys()].map(i=>`<rect x="${60+i*13}" y="322" width="9" height="9" fill="#efe7f6"/>`).join('')}<rect x="125" y="238" width="50" height="204" fill="#e6dcf2"/><polygon points="118,246 150,182 182,246" fill="#e0409a"/><rect x="149" y="160" width="2" height="24" fill="#6b4a7a"/><polygon points="151,160 171,167 151,174" fill="#ff7ab8"/><rect x="40" y="290" width="36" height="152" fill="#e6dcf2"/><polygon points="34,296 58,248 82,296" fill="#7a5bd0"/><rect x="224" y="290" width="36" height="152" fill="#e6dcf2"/><polygon points="218,296 242,248 266,296" fill="#7a5bd0"/><path d="M135 442V398Q150 376 165 398V442Z" fill="#8a5a9a"/>${[[142,270],[142,310],[50,330],[234,330],[90,380],[200,380]].map(([x,y])=>`<path d="M${x} ${y+16}v-10q5-8 10 0v10z" fill="#b07ad0"/>`).join('')}</g><rect y="440" width="300" height="70" fill="url(#g1)"/><path d="M130 440Q150 470 120 510H190Q165 470 170 440Z" fill="#f0dcb0"/>`,
+()=>`<defs>${skyG('#7fc4ff','#e6f4ff','s2')}</defs><rect width="300" height="510" fill="url(#s2)"/><circle cx="60" cy="80" r="30" fill="#fff7c9" opacity=".9"/>${cloud(120,60,1.3)}${cloud(210,150,1.1,'#fff',.95)}${cloud(20,200,1.2)}${cloud(230,290,1,'#fff',.8)}${cloud(10,350,1)}${cloud(150,230,.8,'#fff',.7)}<g fill="#fff">${[...Array(8).keys()].map(i=>`<circle cx="${i*42}" cy="${492+(i%2)*8}" r="${34+(i%3)*6}"/>`).join('')}<rect y="490" width="300" height="30"/></g>`,
+()=>`<defs>${skyG('#d8f2d0','#fff8d0','s3')}${skyG('#6fb86a','#3f8a4a','g3')}</defs><rect width="300" height="510" fill="url(#s3)"/><g fill="#fff" opacity=".35"><polygon points="90,0 130,0 200,450 120,450"/><polygon points="170,0 190,0 260,450 220,450"/></g>${[20,75,125,180,230,285].map(x=>pine(x,440,150,'#8bd09a')).join('')}${[0,60,245,300].map(x=>pine(x,455,200,'#4aa35e')).join('')}<rect y="440" width="300" height="70" fill="url(#g3)"/>${pine(8,490,270,'#2e7d4a')}${pine(292,490,270,'#2e7d4a')}<ellipse cx="60" cy="478" rx="13" ry="9" fill="#e0409a"/><rect x="56" y="478" width="8" height="12" fill="#fff0e0"/><ellipse cx="240" cy="486" rx="10" ry="7" fill="#ff8a3d"/><rect x="237" y="486" width="6" height="10" fill="#fff0e0"/>`,
+()=>`<defs>${skyG('#8fd3ff','#e8f7ff','s4')}${skyG('#ffe9b8','#f3cf8a','g4')}${skyG('#3bb4e0','#8fe0f0','w4')}</defs><rect width="300" height="510" fill="url(#s4)"/><circle cx="240" cy="70" r="30" fill="#ffe27a"/>${cloud(30,80,.9,'#fff',.9)}<rect y="290" width="300" height="100" fill="url(#w4)"/><path d="M0 310q20-7 40 0t40 0t40 0t40 0t40 0t40 0t40 0M0 340q20-7 40 0t40 0t40 0t40 0t40 0t40 0t40 0" stroke="#fff" stroke-width="2" fill="none" opacity=".6"/><path d="M0 395Q60 375 150 392T300 385V510H0Z" fill="url(#g4)"/><path d="M0 395Q60 375 150 392T300 385" stroke="#fff" stroke-width="5" fill="none" opacity=".8"/><path d="M245 450Q258 360 238 275" stroke="#8a5a3a" stroke-width="8" fill="none" stroke-linecap="round"/><g fill="#2e9d4a">${[[-60,-10],[-40,-30],[0,-38],[40,-30],[62,-8],[-30,10],[34,12]].map(([dx,dy])=>`<path d="M238 275Q${238+dx*.6} ${275+dy-30} ${238+dx} ${275+dy+14}Q${238+dx*.5} ${275+dy} 238 275Z"/>`).join('')}</g><g fill="#ffd1e6"><ellipse cx="60" cy="470" rx="8" ry="5"/><ellipse cx="90" cy="490" rx="6" ry="4"/></g><path d="M60 60q8-8 16 0q8-8 16 0M110 100q6-6 12 0q6-6 12 0" stroke="#fff" stroke-width="2" fill="none"/>`,
+()=>`<defs>${skyG('#aee0ff','#eaf8ff','s5')}${skyG('#8fdc7a','#4fae5a','g5')}</defs><rect width="300" height="510" fill="url(#s5)"/><circle cx="50" cy="70" r="26" fill="#fff6c8"/>${cloud(150,70,1,'#fff',.9)}<path d="M0 380Q100 330 200 375T300 360V510H0Z" fill="#a5e592"/><rect y="420" width="300" height="90" fill="url(#g5)"/>${[...Array(34).keys()].map(i=>{const x=(i*47)%300,y=400+((i*31)%100),c=['#ff6fa8','#ffd54a','#fff','#a05bd8','#ff8a3d'][i%5],r=4+(i%3);return `<path d="M${x} ${y}v${12+r}" stroke="#3f9a4a" stroke-width="2"/><g fill="${c}">${[0,1,2,3,4].map(k=>`<circle cx="${x+r*.9*Math.cos(k*1.2566)}" cy="${y+r*.9*Math.sin(k*1.2566)}" r="${r*.6}"/>`).join('')}<circle cx="${x}" cy="${y}" r="${r*.5}" fill="#ffd54a"/></g>`}).join('')}<path d="M40 150q10-12 20 0q-10 8-20 0zM230 190q10-12 20 0q-10 8-20 0z" fill="#ff8ac2"/>`,
+()=>`<defs>${skyG('#bfe3ff','#fff0fa','s6')}${skyG('#8fdc7a','#4fae5a','g6')}</defs><rect width="300" height="510" fill="url(#s6)"/>${['#ff5a5a','#ff9a3d','#ffd84a','#6fd36f','#4ab0ff','#6a6aff','#b06aff'].map((c,i)=>`<path d="M${150-175+i*12} 450A${175-i*12} ${175-i*12} 0 0 1 ${150+175-i*12} 450" stroke="${c}" stroke-width="13" fill="none" opacity=".85"/>`).join('')}${cloud(-10,440,1.4)}${cloud(215,440,1.4)}${cloud(100,80,1,'#fff',.8)}<path d="M0 470Q150 440 300 470V510H0Z" fill="url(#g6)"/>`,
+()=>`<defs>${skyG('#1b1850','#6a4aa0','s7')}</defs><rect width="300" height="510" fill="url(#s7)"/>${[...Array(46).keys()].map(i=>`<circle cx="${(i*97)%300}" cy="${(i*61)%420}" r="${.8+(i%3)*.7}" fill="#fff" opacity="${.5+(i%4)*.12}"/>`).join('')}<g fill="#fff7c0">${[[60,60],[200,120],[120,200],[260,230],[30,300]].map(([x,y])=>star(x,y,6)).join('')}</g><path d="M240 52A28 28 0 1 0 262 96A22 22 0 1 1 240 52Z" fill="#fff3b0"/><path d="M0 440Q80 400 160 435T300 420V510H0Z" fill="#2a1f5a"/><path d="M0 475Q100 450 200 470T300 460V510H0Z" fill="#1f1646"/>`,
+()=>`<defs>${skyG('#ff9ec7','#ffe0a8','s8')}</defs><rect width="300" height="510" fill="url(#s8)"/><circle cx="220" cy="300" r="40" fill="#fff2b0" opacity=".8"/>${[[0,330,40],[36,290,34],[66,350,30],[96,270,40],[134,330,34],[166,300,30],[194,260,40],[232,320,34],[264,285,40]].map(([x,y,w],i)=>`<rect x="${x}" y="${y}" width="${w}" height="${450-y}" fill="${['#6a5a9a','#7f6bb0','#5a4a8a'][i%3]}"/>${[...Array(Math.floor((450-y)/16)).keys()].map(r=>[0,1].map(k=>`<rect x="${x+6+k*(w/2-2)}" y="${y+8+r*16}" width="7" height="8" fill="${(r+k+i)%3?'#ffe27a':'#4a3a7a'}"/>`).join('')).join('')}`).join('')}<rect y="450" width="300" height="60" fill="#4a4660"/><path d="M0 480H300" stroke="#fff" stroke-width="3" stroke-dasharray="18 14" opacity=".8"/>`,
+()=>`<defs>${skyG('#ffe3f1','#ffd0e6','s9')}</defs><rect width="300" height="510" fill="url(#s9)"/>${[...Array(10).keys()].map(i=>`<rect x="${i*30+6}" width="14" height="430" fill="#fff" opacity=".35"/>`).join('')}<rect y="430" width="300" height="80" fill="#e8c9a0"/>${[...Array(6).keys()].map(i=>`<path d="M0 ${440+i*14}H300" stroke="#c9a57a" stroke-width="1.5"/>`).join('')}<rect x="14" y="120" width="74" height="290" rx="37" fill="#e7b84a"/><rect x="21" y="127" width="60" height="276" rx="30" fill="#dff1ff"/><path d="M30 160L70 120M30 230L80 170" stroke="#fff" stroke-width="6" opacity=".6"/><path d="M200 130H292" stroke="#8a5a3a" stroke-width="4"/>${[[210,'#ff6fa8'],[232,'#4a8ff0'],[254,'#a05bd8'],[276,'#ffd54a']].map(([x,c])=>`<path d="M${x} 132l-12 6h24z" stroke="#999" fill="none"/><path d="M${x-12} 140h24l8 80h-40z" fill="${c}"/>`).join('')}<rect x="200" y="330" width="92" height="6" fill="#8a5a3a"/>${[212,236,262].map((x,i)=>`<ellipse cx="${x}" cy="326" rx="12" ry="6" fill="${['#ff6fa8','#fff','#4a8ff0'][i]}"/>`).join('')}<rect x="200" y="380" width="92" height="6" fill="#8a5a3a"/>${[212,236,262].map((x,i)=>`<ellipse cx="${x}" cy="376" rx="12" ry="6" fill="${['#ffd54a','#a05bd8','#ff6fa8'][i]}"/>`).join('')}<ellipse cx="150" cy="486" rx="120" ry="16" fill="#ff9ac8" opacity=".6"/>`,
+()=>`<defs>${skyG('#1a0a3a','#5a1a7a','s10')}<clipPath id="dball"><circle cx="150" cy="46" r="28"/></clipPath></defs><rect width="300" height="510" fill="url(#s10)"/>${['#ff3ea5','#3ec8ff','#ffe24a','#7cff6b'].map((c,i)=>`<polygon points="${50+i*66},0 ${64+i*66},0 ${-30+i*105},440 ${70+i*105},440" fill="${c}" opacity=".2"/>`).join('')}<rect x="149" width="2" height="18" fill="#ccc"/><circle cx="150" cy="46" r="28" fill="#cfd6ff"/><g clip-path="url(#dball)">${[...Array(49).keys()].map(i=>{const c=i%7,r=Math.floor(i/7);return `<rect x="${122+c*8}" y="${18+r*8}" width="7" height="7" fill="${['#fff','#bfc8ff','#ff9ad0','#9ae6ff','#fff3a0'][(c*3+r*2)%5]}" opacity=".95"/>`}).join('')}</g><circle cx="150" cy="46" r="28" fill="none" stroke="#fff" stroke-width="1" opacity=".5"/>${[...Array(30).keys()].map(i=>`<circle cx="${(i*83)%300}" cy="${60+(i*47)%360}" r="${2+(i%3)*2}" fill="${['#ff3ea5','#3ec8ff','#ffe24a','#7cff6b','#fff'][i%5]}" opacity=".55"/>`).join('')}<g fill="#fff">${[[40,70],[250,110],[60,200],[240,260],[30,330],[270,380]].map(([x,y])=>star(x,y,7)).join('')}</g><rect x="0" y="330" width="34" height="110" rx="4" fill="#15102a"/><circle cx="17" cy="365" r="10" fill="#3a2a60"/><circle cx="17" cy="405" r="13" fill="#3a2a60"/><rect x="266" y="330" width="34" height="110" rx="4" fill="#15102a"/><circle cx="283" cy="365" r="10" fill="#3a2a60"/><circle cx="283" cy="405" r="13" fill="#3a2a60"/>${[0,1,2].map(r=>[...Array(6).keys()].map(c=>`<rect x="${c*50}" y="${440+r*27}" width="50" height="27" fill="${['#ff3ea5','#3ec8ff','#ffe24a','#7cff6b','#a05bd8'][(r+c)%5]}" opacity=".75" stroke="#1a0a3a" stroke-width="1.5"/>`).join('')).join('')}`];
+const bgArt=()=>{if(S.bgS>0)return SCN[S.bgS]();let o=`<rect width="300" height="510" fill="${BG[S.bg]}"/>`;const k=S.bgP,c=CLO[S.bgC2];if(!k)return o;
+const T=[null,
+[24,24,`<circle cx="6" cy="6" r="3.5"/><circle cx="18" cy="18" r="3.5"/>`],
+[30,10,`<rect width="15" height="10"/>`],
+[40,40,`<rect width="20" height="20"/><rect x="20" y="20" width="20" height="20"/>`],
+[36,36,heart(18,18,6)],
+[36,36,star(18,18,8)],
+[24,24,`<path d="M0 18L6 6L12 18L18 6L24 18" fill="none" stroke="${c}" stroke-width="3"/>`],
+[40,20,`<path d="M0 10Q10 0 20 10T40 10" fill="none" stroke="${c}" stroke-width="3"/>`],
+[44,44,flower(22,22,7)],
+[20,20,`<rect width="10" height="20"/>`],
+[60,60,`<rect x="8" y="10" width="8" height="4" transform="rotate(30 12 12)" fill="#ff6fa8"/><circle cx="40" cy="14" r="3" fill="#ffd54a"/><rect x="30" y="40" width="8" height="4" transform="rotate(-40 34 42)" fill="#4a8ff0"/><circle cx="12" cy="44" r="3" fill="#6fd36f"/><rect x="48" y="30" width="8" height="4" transform="rotate(70 52 32)" fill="#a05bd8"/>`]][k];
+return o+`<defs><pattern id="bgp" width="${T[0]}" height="${T[1]}" patternUnits="userSpaceOnUse"${k==9?' patternTransform="rotate(45)"':''}><g fill="${c}">${T[2]}</g></pattern></defs><rect width="300" height="510" fill="url(#bgp)"/>`};
+const SLM={0:.3,2:1,4:1,5:.62,6:.3,7:.3,9:.3,10:1,11:1,12:.3,13:1};
+const vis=c=>!c.m||(S.sex==1&&S.age>0),namesOf=c=>S.sex&&c.om?c.om:c.o,codesOf=c=>S.sex&&c.ovm?c.ovm:(c.ov||c.o.map((_,i)=>i)),xgOf=c=>S.sex&&c.xgm?c.xgm:c.xg;
+const allowedX=i=>CATS.some(c=>c.x&&xgOf(c).includes(i));
+const fixSex=()=>{CATS.forEach(c=>{if(c.o&&(c.om||c.ovm)){const cd=codesOf(c);if(!cd.includes(S[c.s]))S[c.s]=cd[0]}});S.xs=S.xs.map((v,i)=>allowedX(i)?v:0);if(!S.sex)S.beard=0};
+const ip=(K,t)=>{if(t<=K[0][0])return K[0][1];for(let i=1;i<K.length;i++)if(t<=K[i][0]){const[a,u]=K[i-1],[b,v]=K[i],k=(1-Math.cos(Math.PI*(t-a)/(b-a)))/2;return u+(v-u)*k}return K[K.length-1][1]};
+const f1=n=>n.toFixed(1);
+const LN=(x1,y1,x2,y2,c,w)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`;
+const tube=P=>{const sm=A=>{let s='';for(let i=1;i<A.length-1;i++)s+=`Q${f1(A[i][0])} ${f1(A[i][1])} ${f1((A[i][0]+A[i+1][0])/2)} ${f1((A[i][1]+A[i+1][1])/2)}`;return s+`L${f1(A[A.length-1][0])} ${f1(A[A.length-1][1])}`};
+const NN=P.map((q,i)=>{const a=P[Math.max(i-1,0)],c=P[Math.min(i+1,P.length-1)],dx=c[0]-a[0],dy=c[1]-a[1],l=Math.hypot(dx,dy)||1;return[-dy/l,dx/l]});
+const Lp=P.map(([x,y,w],i)=>[x+NN[i][0]*w,y+NN[i][1]*w]),Rp=P.map(([x,y,w],i)=>[x-NN[i][0]*w,y-NN[i][1]*w]).reverse();return `M${f1(Lp[0][0])} ${f1(Lp[0][1])}${sm(Lp)}L${f1(Rp[0][0])} ${f1(Rp[0][1])}${sm(Rp)}Z`};
+const hx=c=>[1,3,5].map(i=>parseInt(c.slice(i,i+2),16)),rg=a=>'#'+a.map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('');
+const dk=(c,a)=>rg(hx(c).map(v=>v*(1-a))),lt=(c,a)=>rg(hx(c).map(v=>v+(255-v)*a));
+const GR=(id,c)=>`<linearGradient id="${id}" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="${dk(c,.14)}"/><stop offset=".38" stop-color="${lt(c,.12)}"/><stop offset="1" stop-color="${dk(c,.2)}"/></linearGradient>`;
+const LK=[[0,1],[.25,.9],[.5,.6],[.65,.68],[.85,.45],[1,.36]];
+function draw(){
+const pose0=S.pose;if(S.pet&&S.petPos==2)S.pose=5;
+const V=VIEW,sd=V%2==1,bk=V==2;
+const d=(S.sex?DM:D)[S.age],X=150,hr=d.hr,sw=d.sw,ww=d.ww,hw=d.hw,aw=d.aw;
+const sk=SKIN[S.skin],hc=HAIR[S.hairC],tc=CLO[S.topC],bc=CLO[S.botC],sc=CLO[S.shoeC],lp=S.sex&&!S.lipC?dk(SKIN[S.skin],.2):LIPS[S.lipC];
+const hipY=500-d.leg,shY=hipY-d.tor,wY=shY+d.tor*.6,cy=shY-hr-12,tw=hw*(S.sex?.6:.52),LL=490-hipY,bu=S.sex?0:[0,1,2.2][S.age],sp=S.sex?Math.max(hw*.9,sw*.72):hw*.9;
+const bw=y=>ip([[shY-3,sw*.55],[shY+3,sw],[shY+d.tor*.25,sw*(S.sex?1:.93)+bu],[wY,ww],[hipY-d.tor*.1,hw],[hipY+5,hw*.96]],y);
+const xf=y=>ip([[shY-3,sp*.22],[shY+3,sp*.42],[shY+d.tor*.28,sp*.66+bu*1.6],[wY,sp*.3],[hipY-d.tor*.1,sp*.5],[hipY+5,sp*.38]],y);
+const xb=y=>ip([[shY-3,sp*.5],[shY+3,sp*.78],[shY+d.tor*.3,sp*.74],[wY,sp*.34],[hipY-d.tor*.1,sp*.92],[hipY+5,sp*.72]],y);
+const TL=y=>sd?X-xb(y):X-bw(y),TR=y=>sd?X+xf(y):X+bw(y);
+const TS=(y0,y1,p)=>{let L='',R='';for(let y=y0,e=0;!e;y+=3){if(y>=y1){y=y1;e=1}L+=`${L?'L':'M'}${f1(TL(y)-p)} ${f1(y)}`;R=`L${f1(TR(y)+p)} ${f1(y)}`+R}return L+R+'Z'};
+const ldx=s=>sd?0:[0,s>0?5:0,s<0?11:2,0,0,0][S.pose],LO=S.pose==2?[1,-1]:[-1,1];
+const LKs=[[0,1.15],[.25,1],[.5,.62],[.62,.78],[.85,.42],[1,.34]];
+const leg=(s,fe,p,f0=0)=>{const P=[];for(let i=0;i<=8;i++){const f=f0+(fe-f0)*i/8,pp=typeof p=='function'?p(f):p;
+if(sd)P.push([X+(s>0?2:-3)+s*3*f-tw*.12*Math.sin(Math.PI*Math.min(1,Math.max(0,(f-.4)/.45))),hipY+LL*f,tw*.95*ip(LKs,f)+pp]);
+else P.push([X+s*(tw*1.05-tw*.2*f)+ldx(s)*f,hipY+LL*f,tw*ip(LK,f)+pp])}return tube(P)};
+const armPts=s=>{const sx=sd?X+(s>0?1:-2):X+s*(sw-1),sy=shY+5,P=sd?0:S.pose;let ex=sd?X+(s>0?5:-4):X+s*(sw+9),ey=hipY+6,mx=(sx+ex)/2+(sd?3:0),m2=(sy+ey)/2;
+if((P==1&&s>0)||P==2){mx=X+s*(sw+13);m2=shY+d.tor*.55;ex=X+s*(ww+5);ey=wY+(hipY-wY)*.2}
+if(P==3&&s>0){mx=X+s*(sw+13);m2=shY+d.tor*.2;ex=X+s*(sw+17);ey=cy+hr*.5}
+if(P==5){mx=X+s*(sw+3);m2=shY+d.tor*.5;ex=X+s*5;ey=wY+(hipY-wY)*.1}
+if(P==4){mx=X+s*(sw-1);m2=shY+d.tor*.52;ex=X+s*3;ey=wY+(hipY-wY)*.3}
+return[[sx,sy],[mx,m2],[ex,ey]]};
+const AP=(s,t)=>{const[a,m,c]=armPts(s);return t<.5?[a[0]+(m[0]-a[0])*t*2,a[1]+(m[1]-a[1])*t*2]:[m[0]+(c[0]-m[0])*(t-.5)*2,m[1]+(c[1]-m[1])*(t-.5)*2]};
+const AR=(s,t1,p,t0=0)=>{const P=[];for(let i=0;i<=8;i++){const t=t0+(t1-t0)*i/8,q=AP(s,t);P.push([q[0],q[1],aw*(.58-.2*t)+p])}return tube(P)};
+const defs=`<defs>${GR('gk',CLO[S.sockC])}${GR('gkd',dk(CLO[S.sockC],.1))}${GR('gs',sk)}${GR('gsd',dk(sk,.1))}${GR('gt',tc)}${GR('gb',bc)}${GR('gbd',dk(bc,.1))}<linearGradient id="gh" gradientUnits="userSpaceOnUse" x1="0" y1="${cy-hr}" x2="0" y2="${cy+hr*2.6}"><stop offset="0" stop-color="${lt(hc,.18)}"/><stop offset=".3" stop-color="${hc}"/><stop offset=".5" stop-color="${lt(hc,.1)}"/><stop offset="1" stop-color="${dk(hc,.28)}"/></linearGradient><radialGradient id="gi"><stop offset=".2" stop-color="${lt(EYE[S.eyeC],.4)}"/><stop offset=".65" stop-color="${EYE[S.eyeC]}"/><stop offset="1" stop-color="${dk(EYE[S.eyeC],.5)}"/></radialGradient><radialGradient id="gbl"><stop offset="0" stop-color="#ff6f8f" stop-opacity=".5"/><stop offset="1" stop-color="#ff6f8f" stop-opacity="0"/></radialGradient></defs>`;
+const hf='url(#gh)',gs='url(#gs)';
+const P5=!sd&&S.pose>=4,armsOver=P5&&((V==0&&S.pose==5)||(V==2&&S.pose==4)),armsUnder=P5&&!armsOver;
+const rot=c=>{const a=sd?0:[0,3,4,-3,2,2][S.pose];return a?`<g transform="rotate(${a} ${X} ${shY-8})">${c}</g>`:c};
+const sq=(s,dx,c)=>`<g transform="translate(${X+dx} 0) scale(${s} 1) translate(${-X} 0)">${c}</g>`;
+// hair
+const Lend=shY+d.tor*.85,h=S.hair;
+let hb=E(X,cy-hr*.05,hr*(S.sex?.93:1.05),hr*(S.sex?1.02:1.1),hf);
+if(h==0)hb+=R(X-hr*1.05,cy,hr*2.1,Lend-cy,hf,hr*.5);
+if(h==1){hb+=R(X-hr*1.1,cy,hr*2.2,Lend-cy,hf,hr*.5);for(let y=cy+hr*.6;y<Lend;y+=hr*.55)hb+=E(X-hr*1.1,y,hr*.2,hr*.3,hf)+E(X+hr*1.1,y,hr*.2,hr*.3,hf)}
+if(h==2)hb+=R(X-hr*1.08,cy-hr*.2,hr*2.16,hr*1.4,hf,hr*.45);
+if(h==3)hb+=E(X-hr*1.2,cy+hr*.9,hr*.3,hr*.9,hf)+E(X+hr*1.2,cy+hr*.9,hr*.3,hr*.9,hf);
+if(h==4)hb+=E(X,cy-hr*1.15,hr*.4,hr*.4,hf);
+if(h==5)hb+=bk?E(X,cy+hr*.85,hr*.3,hr*1.0,hf):E(X+hr*1.1,cy+hr*.7,hr*.3,hr*.95,hf,`transform="rotate(-15 ${X+hr*1.1} ${cy})"`);
+let hOver='';
+const SS=(xa,xb,ya,yb,n)=>{let o='';for(let k=0;k<n;k++){const u=(k+.5)/n,x=xa+(xb-xa)*u,j=(k%2?1:-1)*hr*.05;o+=`<path d="M${f1(x)} ${f1(ya)}Q${f1(x+j)} ${f1((ya+yb)/2)} ${f1(x+j*.3)} ${f1(yb)}" fill="none" stroke="${k%3==0?lt(hc,.45):dk(hc,.4)}" stroke-width="1.2" opacity=".3"/>`}return o};
+const braid=(x0,y0,n,col,dir)=>{let o='';for(let k=0;k<n;k++)o+=E(x0+(k%2?1:-1)*hr*.03+dir*k*hr*.03,y0+k*hr*.42,hr*.2,hr*.26,hf);return o+`<circle cx="${x0+dir*n*hr*.03}" cy="${y0+n*hr*.42}" r="${hr*.1}" fill="${col}"/>`};
+if(h==7)hb+=R(X-hr*1.05,cy,hr*2.1,Lend-cy,hf,hr*.5)+E(X,cy-hr*1.15,hr*.34,hr*.34,hf);
+if(h==8)hb+=E(X-hr*.78,cy-hr*1,hr*.34,hr*.34,hf)+E(X+hr*.78,cy-hr*1,hr*.34,hr*.34,hf);
+if(h==9){hb+=R(X-hr*1.08,cy-hr*.2,hr*2.16,hr*1.2,hf,hr*.45);for(let y=cy+hr*.1;y<cy+hr*1.1;y+=hr*.42)hb+=E(X-hr*1.08,y,hr*.24,hr*.28,hf)+E(X+hr*1.08,y,hr*.24,hr*.28,hf);for(let i=-2;i<=2;i++)hb+=E(X+i*hr*.45,cy+hr*1,hr*.26,hr*.26,hf)}
+if(h==10){hb+=R(X-hr,cy,hr*2,hr*.8,hf,hr*.3);if(bk)hb+=braid(X,cy+hr*.9,7,'#ff6fa8',0);else hOver=braid(X-hr*.9,cy+hr*.85,7,'#ff6fa8',2.5)}
+if(h==22)for(let k=-4;k<=4;k++){const dx=k*hr*.2,yb_=cy-Math.sqrt(Math.max(0,1-(dx/(hr*.95))**2))*hr*.98;hb+=`<polygon points="${f1(X+dx-hr*.11)},${f1(yb_+hr*.08)} ${f1(X+dx*1.15)},${f1(yb_-hr*.4)} ${f1(X+dx+hr*.11)},${f1(yb_+hr*.08)}" fill="${hf}"/>`}
+if(h==23)hb+=E(X,cy-hr*.78,hr*.72,hr*.42,hf)+E(X-hr*.84,cy,hr*.14,hr*.5,dk(hc,.45))+E(X+hr*.84,cy,hr*.14,hr*.5,dk(hc,.45));
+if(h==24){for(let k=-5;k<=5;k++){const dx=k*hr*.17,yb_=cy-Math.sqrt(Math.max(0,1-(dx/(hr*.95))**2))*hr*.98;hb+=E(X+dx,yb_+hr*.02,hr*.19,hr*.17,hf)}hb+=E(X-hr*.95,cy-hr*.1,hr*.17,hr*.3,hf)+E(X+hr*.95,cy-hr*.1,hr*.17,hr*.3,hf)}
+if(h==25)hb+=R(X-hr*.98,cy-hr*.2,hr*1.96,hr*1.05,hf,hr*.35);
+if(h==26)hb+=`<path d="M${f1(X-hr*.9)} ${f1(cy-hr*.3)}C${f1(X-hr*1.1)} ${f1(cy-hr*1.55)} ${f1(X+hr*.4)} ${f1(cy-hr*1.65)} ${f1(X+hr*.95)} ${f1(cy-hr*.5)}L${f1(X+hr*.5)} ${f1(cy-hr*.8)}Z" fill="${hf}"/>`;
+if(h==27){hb+=R(X-hr*1.05,cy,hr*2.1,hr*1.75,hf,hr*.45);for(let y=cy+hr*.5;y<cy+hr*1.7;y+=hr*.5)hb+=E(X-hr*1.05,y,hr*.2,hr*.3,hf)+E(X+hr*1.05,y,hr*.2,hr*.3,hf);hb+=SS(X-hr*.95,X+hr*.95,cy+hr*.4,cy+hr*1.6,9)}
+if(h==29)hb=E(X,cy-hr*.25,hr*1.45,hr*1.35,hf)+hb;
+if(h==30)hb+=R(X-hr,cy-hr*.15,hr*2,hr*.85,hf,hr*.4);
+if(h==0||h==1||h==7)hb+=SS(X-hr*.95,X+hr*.95,cy+hr*.3,Lend-8,10);
+if(h==2||h==9)hb+=SS(X-hr*1,X+hr*1,cy+hr*.2,cy+hr*1,8);
+if(V==0&&(h==0||h==1||h==7))for(const s of[-1,1]){const x2=X+s*sw*.58,y2=shY+d.tor*.52;
+hOver+=`<path d="M${f1(X+s*hr*.95)} ${f1(cy+hr*.15)}Q${f1(X+s*(sw+hr*.3))} ${f1(shY-6)} ${f1(x2+s*hr*.1)} ${f1(y2)}Q${f1(X+s*(sw-hr*.1))} ${f1(shY+8)} ${f1(X+s*hr*.62)} ${f1(cy+hr*.5)}Z" fill="${hf}"/>`;
+for(let j=0;j<3;j++)hOver+=`<path d="M${f1(X+s*(hr*.8-j*hr*.07))} ${f1(cy+hr*.3)}Q${f1(X+s*(sw+hr*.08-j*3))} ${f1(shY-2)} ${f1(x2+s*(hr*.08-j*2))} ${f1(y2-4)}" fill="none" stroke="${j%2?lt(hc,.45):dk(hc,.4)}" stroke-width="1.1" opacity=".35"/>`}
+if(bk)hb+=`<path d="M${X} ${cy-hr*1.05}Q${X+hr*.06} ${cy-hr*.4} ${X} ${cy+hr*.1}" ${ST(dk(hc,.35),2)} opacity=".4"/><path d="M${X-hr*.5} ${cy-hr*.8}Q${X-hr*.2} ${cy-hr} ${X+hr*.1} ${cy-hr*.95}" ${ST('#fff',3)} opacity=".25"/>`;
+let hbS=E(X-hr*.1,cy-hr*.05,hr*(S.sex?.93:1),hr*(S.sex?1.02:1.08),hf);
+if(h==0)hbS+=R(X-hr*1.02,cy,hr*1.1,Lend-cy,hf,hr*.45);
+if(h==1){hbS+=R(X-hr*1.05,cy,hr*1.15,Lend-cy,hf,hr*.45);for(let y=cy+hr*.6;y<Lend;y+=hr*.55)hbS+=E(X-hr*1.05,y,hr*.2,hr*.3,hf)}
+if(h==2)hbS+=R(X-hr*1.02,cy-hr*.2,hr*1.15,hr*1.3,hf,hr*.4);
+if(h==3)hbS+=E(X-hr*.95,cy+hr*.95,hr*.3,hr*.9,hf);
+if(h==4)hbS+=E(X-hr*.55,cy-hr*1.1,hr*.4,hr*.4,hf);
+if(h==5)hbS+=E(X-hr*1.15,cy+hr*.6,hr*.3,hr*.95,hf,`transform="rotate(15 ${X-hr*1.15} ${cy})"`);
+if(h==7)hbS+=R(X-hr*1.02,cy,hr*1.1,Lend-cy,hf,hr*.45)+E(X-hr*.45,cy-hr*1.1,hr*.34,hr*.34,hf);
+if(h==8)hbS+=E(X-hr*.4,cy-hr*1.05,hr*.36,hr*.36,hf);
+if(h==9){hbS+=R(X-hr*1.02,cy-hr*.2,hr*1.15,hr*1.2,hf,hr*.4);for(let y=cy+hr*.1;y<cy+hr*1.1;y+=hr*.42)hbS+=E(X-hr,y,hr*.24,hr*.28,hf);for(let i=-1;i<=1;i++)hbS+=E(X-hr*.45+i*hr*.45,cy+hr,hr*.26,hr*.26,hf)}
+if(h==10)hbS+=R(X-hr,cy,hr*1.05,hr*.8,hf,hr*.3)+braid(X-hr*.95,cy+hr*.85,7,'#ff6fa8',-.4);
+if(h==22)for(let k=-4;k<=4;k++){const dx=k*hr*.2,yb_=cy-Math.sqrt(Math.max(0,1-(dx/(hr*.95))**2))*hr*.98;hbS+=`<polygon points="${f1(X-hr*.1+dx-hr*.11)},${f1(yb_+hr*.08)} ${f1(X-hr*.1+dx*1.15)},${f1(yb_-hr*.4)} ${f1(X-hr*.1+dx+hr*.11)},${f1(yb_+hr*.08)}" fill="${hf}"/>`}
+if(h==23)hbS+=E(X-hr*.1,cy-hr*.78,hr*.66,hr*.42,hf);
+if(h==24)for(let k=-5;k<=5;k++){const dx=k*hr*.17,yb_=cy-Math.sqrt(Math.max(0,1-(dx/(hr*.95))**2))*hr*.98;hbS+=E(X-hr*.1+dx,yb_+hr*.02,hr*.19,hr*.17,hf)}
+if(h==25)hbS+=R(X-hr,cy-hr*.2,hr*1.1,hr*1.05,hf,hr*.35);
+if(h==26)hbS+=`<path d="M${f1(X-hr)} ${f1(cy-hr*.3)}C${f1(X-hr*1.15)} ${f1(cy-hr*1.5)} ${f1(X+hr*.2)} ${f1(cy-hr*1.6)} ${f1(X+hr*.85)} ${f1(cy-hr*.55)}L${f1(X+hr*.4)} ${f1(cy-hr*.8)}Z" fill="${hf}"/>`;
+if(h==27){hbS+=R(X-hr*1.05,cy,hr*1.15,hr*1.75,hf,hr*.45);for(let y=cy+hr*.5;y<cy+hr*1.7;y+=hr*.5)hbS+=E(X-hr*1.05,y,hr*.2,hr*.3,hf)}
+if(h==29)hbS=E(X-hr*.15,cy-hr*.25,hr*1.4,hr*1.3,hf)+hbS;
+if(h==30)hbS+=R(X-hr,cy-hr*.15,hr*1.1,hr*.85,hf,hr*.4);
+// skin
+const ol=dk(sk,.42),SKL=[],SKE=[];let nearArm='';
+const uo=(ds,c)=>ds.map(d=>`<path d="${d}" fill="${c}" stroke="${c}" stroke-width="2.2" stroke-linejoin="round"/>`).join('');
+const hP=s=>{const[,m,c]=armPts(s),dx=c[0]-m[0],dy=c[1]-m[1],l=Math.hypot(dx,dy)||1;return[c[0]+dx/l*aw*.5,c[1]+dy/l*aw*.5]};
+const ank=s=>X+(s>0?5:-6);
+const GLV=S.xs[14]?{c:CLO[S.xc[14]],v:S.xv[14]}:null;
+const glv=s=>GLV&&GLV.v==1?`<path d="${AR(s,1,.8,.45)}" fill="${GLV.c}" stroke="${dk(GLV.c,.4)}" stroke-width=".8"/>`:'';
+const handSVG=(s,f)=>{const[,m,c]=armPts(s);let th=Math.atan2(c[1]-m[1],c[0]-m[0])-Math.PI/2;if(!sd&&(S.pose==5||S.pose==4))th=Math.atan2(1,-s*.3)-Math.PI/2;
+const ts=Math.cos(th)>=0?-s:s,fc0=String(f).includes('gsd')?dk(sk,.1):sk,olc=GLV?dk(GLV.c,.4):ol,fc=GLV&&GLV.v!=2?GLV.c:fc0,pf=GLV?GLV.c:f,palm='M-3 0L3 0Q3.6 4 2.9 7.6Q0 8.8 -2.9 7.6Q-3.6 4 -3 0Z',
+F=[[-2.2,7.6],[-.75,8.8],[.7,8.2],[2.1,6.4]].map(([x,l])=>`M${x} 7Q${x*1.15} ${7+l*.5} ${x*1.3} ${7+l}`).join('')+`M${ts*2.8} 1.5Q${ts*5} 3.5 ${ts*5.8} 7.2`;
+return `<g transform="translate(${f1(c[0])} ${f1(c[1])}) rotate(${f1(th*180/Math.PI)}) scale(${(aw/5.8).toFixed(2)})"><path d="${F}" fill="none" stroke="${olc}" stroke-width="3.1" stroke-linecap="round"/><path d="${palm}" fill="${olc}" stroke="${olc}" stroke-width="1.6" stroke-linejoin="round"/><path d="${F}" fill="none" stroke="${fc}" stroke-width="1.5" stroke-linecap="round"/><path d="${palm}" fill="${pf}"/></g>`};
+const addArm=(s,f)=>{SKL.push([AR(s,1,0),f]);SKL.push(['','',glv(s)+handSVG(s,f)])};
+const addLeg=(s,f)=>{SKL.push([leg(s,1,0),f]);SKE.push(sd?[ank(s)+7,493,13,5.5,sk]:[X+s*tw*.85+ldx(s),493,tw*.5+3,5,sk])};
+if(sd){addArm(-1,'url(#gsd)');addLeg(-1,'url(#gsd)');addLeg(1,gs)}else{for(const s of LO){addLeg(s,gs);if(!armsOver)addArm(s,gs)}
+if(armsUnder){const slu=SLM[S.top]||0;if(slu)for(const s of[-1,1])SKL.push([AR(s,slu,S.top==6?3.4:2.2),'url(#gt)'])}}
+const nx=sd?hr*.06:0;
+SKL.push([TS(shY-3,hipY+5,0),gs],[tube([[X+nx,cy+hr*.7,hr*.17*(S.sex?1.25:1)],[X+nx*.6,shY-6,hr*.15*(S.sex?1.25:1)],[X,shY+3,hr*.24*(S.sex?1.2:1)]]),gs]);
+let b=uo(SKL.map(a=>a[0]).filter(Boolean),ol)+SKE.map(e=>E(e[0],e[1],e[2]+1.1,e[3]+1.1,ol)).join('')+SKL.map(a=>a[2]||`<path d="${a[0]}" fill="${a[1]}"/>`).join('')+SKE.map(e=>E(e[0],e[1],e[2],e[3],e[4])).join('')+E(X+nx,cy+hr*.98,hr*.5,hr*.13,'#000','opacity=".09"');
+if(bk)b+=`<path d="M${X} ${shY+4}L${X} ${wY}" ${ST(dk(sk,.3),1.2)} opacity=".35"/>`;
+const arm=(s,f)=>`<path d="${AR(s,1,0)}" fill="${f}" stroke="${ol}" stroke-width=".9"/>`+glv(s)+handSVG(s,f);
+let sk2='';
+if(S.sock){const f0=[0,.88,.45,0][S.sock];for(const s of LO)sk2+=`<path d="${leg(s,1,.9,f0)}" fill="url(#${sd&&s<0?'gkd':'gk'})"/>`;if(S.sock==3)sk2+=`<path d="${TS(wY,hipY+5,.9)}" fill="url(#gk)"/>`}
+// underwear
+const UW=S.sex?'#eef2fa':'#fbeaf2',UT=S.sex?'#b8c4dc':'#e6b8cf',ba=S.sex?[.08,.82]:S.age==0?[.08,.42]:[.2,.36],by0=shY+d.tor*ba[0];
+const strap=sd?LN(X-1,shY,X+2,by0+1,UT,2.5):LN(X-sw*.5,shY,X-sw*.5,by0+1,UT,2.5)+LN(X+sw*.5,shY,X+sw*.5,by0+1,UT,2.5);
+const uw=`<path d="${TS(by0,shY+d.tor*ba[1],.8)}" fill="${UW}" stroke="${UT}" stroke-width="1"/>`+strap+(S.sex?`<path d="${TS(wY+(hipY-wY)*.12,hipY+4,1)}" fill="${UW}" stroke="${UT}" stroke-width="1"/>`+LO.map(s=>`<path d="${leg(s,.17,1.4)}" fill="${UW}" stroke="${UT}" stroke-width="1"/>`).join(''):`<path d="${TS(wY+(hipY-wY)*.25,hipY+2,.8)}" fill="${UW}" stroke="${UT}" stroke-width="1"/><path d="M${f1(TL(hipY))} ${hipY+2}L${f1(TR(hipY))} ${hipY+2}L${X+3} ${hipY+13}L${X-3} ${hipY+13}Z" fill="${UW}" stroke="${UT}" stroke-width="1"/>`);
+// shoes
+let sh='';
+if(S.shoe!=7)for(const s of LO){const SH=S.shoe,a=ank(s),x=X+s*tw*.85+ldx(s),w=tw*.45,boot=f0=>`<path d="${leg(s,1,1.8,f0)}" fill="${sc}"/>`;
+if(sd){
+if(SH==0)sh+=R(a-5,478,10,14,sc,3)+E(a+8,494,15,7.5,sc)+E(a+8,498,15,3,'#fff');
+if(SH==1)sh+=boot(.72)+E(a+7,494,14,7.5,sc);
+if(SH==2)sh+=E(a+7,495,13,5.5,sc);
+if(SH==3)sh+=E(a+5,490,11,5,sc,`transform="rotate(12 ${a+5} 490)"`)+R(a-5,490,3,10,sc);
+if(SH==4)sh+=E(a+7,497,13,3,sc)+LN(a+2,492,a+9,496,sc,2)+LN(a-3,486,a+2,494,sc,2);
+if(SH==5)sh+=boot(.86)+E(a+8,494,15,7.5,sc)+E(a+8,498,15,3,'#fff')+E(a+14,493,4,4,'#fff');
+if(SH==6)sh+=boot(.45)+E(a+7,494,14,7.5,sc);
+if(SH==8)sh+=E(a+8,494,15,6.5,sc)+E(a+8,498,15,2.2,dk(sc,.45))+R(a-6,495,6,5,dk(sc,.45),1)}
+else{
+if(SH==0)sh+=E(x+s*2,494,w*2+3,7,sc)+E(x+s*2,498,w*2+3,3,'#fff');
+if(SH==1)sh+=boot(.72)+E(x+s*2,494,w*2+3,7,sc);
+if(SH==2)sh+=E(x+s,495,w*2+2,5,sc);
+if(SH==3)sh+=E(x+s,492,w*2,6,sc)+R(x+s*w*.9-1.5,494,3,8,sc);
+if(SH==4)sh+=E(x+s,497,w*2+2,3,sc)+LN(x-w,491,x+w,491,sc,2.2)+LN(x-w*.7,485,x+w*.7,485,sc,2.2);
+if(SH==5)sh+=boot(.86)+E(x+s*2,494,w*2+3,7,sc)+E(x+s*2,498,w*2+3,3,'#fff')+E(x+s*2,491,w*.8,2.5,'#fff');
+if(SH==6)sh+=boot(.45)+E(x+s*2,494,w*2+3,7,sc);
+if(SH==8)sh+=E(x+s*2,494,w*2+3,6.5,sc)+E(x+s*2,498,w*2+3,2.2,dk(sc,.45))}}
+// bottom
+const q=S.bot;let bt='',btB='',bD='',bW=hw,bY1=hipY+5;
+const lgB=(s,fe,p)=>`<path d="${leg(s,fe,p)}" fill="url(#${sd&&s<0?'gbd':'gb'})"/>`;
+const PT={0:[(470-hipY)/LL,2.5],1:[.3,2.5],5:[.99,1.1],6:[.72,2.3],10:[.99,f=>2.5+9*Math.pow(Math.max(0,(f-.45)/.55),1.5)],12:[(470-hipY)/LL,2.2],13:[.99,f=>3.4-1.6*Math.max(0,(f-.78)/.22)],14:[.9,3.4],15:[.5,3]};
+const SK={2:[.22,hw+14],3:[.68,hw+16],4:[0,hw+62],7:[.45,hw+22],8:[.22,hw+16],9:[.2,hw+34]};
+if(PT[q]){const[fe,p]=PT[q],hp=q==5?1.3:2.5;bD=TS(wY,hipY+5,hp)+leg(-1,fe,p)+leg(1,fe,p);bY1=hipY+LL*fe;bt=uo([TS(wY,hipY+5,hp),leg(-1,fe,p),leg(1,fe,p)],dk(bc,.38))+`<path d="${TS(wY,hipY+5,hp)}" fill="url(#gb)"/>`+LO.map(s=>lgB(s,fe,p)).join('');btB=bt;bt='';
+if(!sd&&!bk&&(q==0||q==1||q==6||q==10||q>=12)){bt+=`<path d="${TS(wY-1,wY+5,2.8)}" fill="${dk(bc,.14)}"/>`+LN(X,wY+5,X,hipY+3,dk(bc,.3),1);for(const s of[-1,1])bt+=`<path d="M${f1(X+s*ww*.9)} ${f1(wY+6)}Q${f1(X+s*hw*.95)} ${f1(wY+14)} ${f1(X+s*hw*.5)} ${f1(wY+24)}" ${ST(dk(bc,.32),1)} opacity=".6"/>`}
+if(!sd&&(q==0||q==10))for(const s of[-1,1]){const kx=X+s*(tw*.95)+ldx(s)*.5,ky=hipY+LL*.5;bt+=`<path d="M${f1(kx-6)} ${f1(ky)}Q${f1(kx)} ${f1(ky+3)} ${f1(kx+6)} ${f1(ky)}" ${ST(dk(bc,.3),1)} opacity=".4"/>`}
+if(!sd&&q==5)for(const s of[-1,1]){const c1=X+s*(tw*1.05-tw*.2*.12)+ldx(s)*.12-tw*.3,c2=X+s*(tw*1.05-tw*.2*.9)+ldx(s)*.9-tw*.2;bt+=`<path d="M${f1(c1)} ${f1(hipY+LL*.12)}L${f1(c2)} ${f1(hipY+LL*.9)}" ${ST(lt(bc,.4),2)} opacity=".3"/>`}
+if(!sd&&q==13)for(const s of[-1,1]){const cx=X+s*(tw*1.05-tw*.2)+ldx(s),cy2=hipY+LL*.93;bt+=`<path d="M${f1(cx-tw*.5)} ${f1(cy2)}h${f1(tw)}" ${ST(dk(bc,.3),3.5)}/>`+LN(f1(X+s*(tw*1.05+tw*.78)),f1(hipY+LL*.06),f1(X+s*(tw*.85+tw*.4)+ldx(s)),f1(hipY+LL*.9),lt(bc,.55),1.6)}
+if(!sd&&q==14)for(const s of[-1,1]){const cx=X+s*(tw*1.05-tw*.2*.3)+ldx(s)*.3+s*tw*.2,cy2=hipY+LL*.3;bt+=R(cx-6,cy2,12,13,dk(bc,.1),1.5)+LN(f1(cx-6),f1(cy2+4),f1(cx+6),f1(cy2+4),dk(bc,.3),.8)}
+}
+else if(SK[q]){const[hh,hd]=SK[q],hy=q==4?484:hipY+LL*hh,Lp=[],Rp=[],pw=q==4?.7:q==9?.6:1;let l,r;
+for(let y=wY,e=0;!e;y+=3){if(y>=hy){y=hy;e=1}
+if(y<=hipY){l=TL(y)-2.5;r=TR(y)+2.5}else{const k=Math.pow((y-hipY)/(hy-hipY),pw);
+if(!sd){const w=hw+2.5+(hd-hw-2.5)*k;l=X-w;r=X+w}else{const e0=(xf(hipY)+xb(hipY))/2+2.5,c=X+(xf(hipY)-xb(hipY))/2,ee=e0+(hd*.8-e0)*k;l=c-ee;r=c+ee}}
+Lp.push(`${f1(l)} ${f1(y)}`);Rp.push(`${f1(r)} ${f1(y)}`)}
+bD=`M${Lp.join('L')}Q${f1((l+r)/2)} ${hy+14} ${Rp[Rp.length-1]}L${Rp.slice(0,-1).reverse().join('L')}Z`;bW=hd;bY1=hy;bt=`<path d="${bD}" fill="url(#gb)" stroke="${dk(bc,.35)}" stroke-width=".9" stroke-linejoin="round"/>`;btB=bt;bt='';
+if(!sd&&q==8)for(let i=-4;i<=4;i++)bt+=LN(X+i*hw*.2,hipY-6,X+i*hd*.21,hy-3,dk(bc,.28),1.2);
+if(!sd&&q==9)bt+=E(X,hy-5,hd*.96,6,lt(bc,.3),'opacity=".55"')+E(X,hy-15,hd*.78,5,lt(bc,.3),'opacity=".5"')+E(X,hy-25,hd*.6,4,lt(bc,.3),'opacity=".45"');
+bt+=`<path d="${TS(wY-1,wY+4,2.8)}" fill="${dk(bc,.14)}"/>`;
+if(!sd){if(q==2||q==3||q==4||q==7)for(let i=-3;i<=3;i++)if(i)bt+=`<path d="M${f1(X+i*hw*.2)} ${f1(hipY-2)}Q${f1(X+i*hd*.12)} ${f1((hipY+hy)/2)} ${f1(X+i*hd*.22)} ${f1(hy-4)}" ${ST(i%2?dk(bc,.22):lt(bc,.3),1.2)} opacity=".28"/>`;
+if(q==2||q==3||q==7)bt+=`<path d="M${f1(l)} ${f1(hy)}Q${f1((l+r)/2)} ${f1(hy+14)} ${f1(r)} ${f1(hy)}" ${ST(dk(bc,.2),3)}/>`;
+if(q==4)for(let k=1;k<12;k++){const u=k/12;bt+=`<circle cx="${f1(l+(r-l)*u)}" cy="${f1(hy+28*u*(1-u)+1)}" r="3.2" fill="${lt(bc,.4)}"/>`}}}
+// top
+const t=S.top,yb=hipY-4;let tp='',tpB='',ty0=shY-3,ty1=yb;
+const sl=SLM[t]||0,spd=t==6?3.4:2.2;
+const slv=(s,t1)=>`<path d="${AR(s,t1,spd)}" fill="url(#gt)" stroke="${dk(tc,.35)}" stroke-width=".9" stroke-linejoin="round"/>`;
+if(t==1)ty0=shY+10;if(t==3){ty0=shY+10;ty1=wY+8}if(t==6)ty0=shY+9;if(t==7)ty1=wY+7;if(t==4||t==13)ty1=hipY+3;
+const cx0=(TL(shY)+TR(shY))/2,hw0=(TR(shY)-TL(shY))/2,dkT=dk(tc,.16);
+if(t!=8){tp=`<path d="${TS(ty0,ty1,t==4||t==13?3:2.2)}" fill="url(#gt)" stroke="${dk(tc,.35)}" stroke-width=".9" stroke-linejoin="round"/>`;
+if(sl&&!sd&&!armsOver&&!armsUnder)tp+=slv(-1,sl)+slv(1,sl);
+if(t==1)tp+=sd?LN(X+1,shY-2,X+2,shY+14,tc,4):LN(X-sw*.5,shY-2,X-sw*.5,shY+14,tc,S.sex?9:4)+LN(X+sw*.5,shY-2,X+sw*.5,shY+14,tc,S.sex?9:4);
+if(t==3&&bk)for(let y=ty0+4;y<ty1-4;y+=7)tp+=LN(X-4,y,X+4,y+4,lt(tc,.55),1.5)+LN(X+4,y,X-4,y+4,lt(tc,.55),1.5);
+tpB=tp;tp='';
+if(t==4||t==13){tp+=E(cx0,shY-3,hw0*.62,bk?12:8,dkT)+`<path d="${TS(hipY-6,hipY+3,3.4)}" fill="${dkT}"/>`;
+if(!sd&&!bk&&t==13)tp+=LN(X,shY+3,X,ty1,lt(tc,.5),1.6)+`<circle cx="${X}" cy="${shY+8}" r="1.8" fill="#ddd"/>`;
+if(!sd&&!bk&&t==4)tp+=LN(X-5,shY+3,X-6,shY+22,'#f4f4f4',1.6)+LN(X+5,shY+3,X+6,shY+22,'#f4f4f4',1.6)+`<path d="M${X-sw*.5} ${wY+4}L${X+sw*.5} ${wY+4}L${X+sw*.62} ${wY+20}L${X-sw*.62} ${wY+20}Z" fill="${dkT}" opacity=".55"/>`}
+if(t==5||t==9||t==10){tp+=bk||sd?E(cx0,shY-2,hw0*.4,4,lt(tc,.45)):`<path d="M${X-2} ${shY-2}L${X-hw0*.6} ${shY-1}L${X-hw0*.2} ${shY+11}Z" fill="${lt(tc,.5)}" stroke="${dkT}" stroke-width=".8"/><path d="M${X+2} ${shY-2}L${X+hw0*.6} ${shY-1}L${X+hw0*.2} ${shY+11}Z" fill="${lt(tc,.5)}" stroke="${dkT}" stroke-width=".8"/>`;
+if(!sd&&!bk)for(let y=shY+16;y<(t==9?shY+40:ty1-6);y+=12)tp+=`<circle cx="${X}" cy="${y}" r="1.7" fill="${lt(tc,.7)}"/>`}
+if(t==10&&!sd&&!bk)tp+=R(X+sw*.2,shY+d.tor*.2,sw*.4,sw*.4,dk(tc,.08),2);
+if(t==11)tp+=`<path d="${TS(hipY-8,hipY+1,2.8)}" fill="${dkT}"/>`+E(cx0,shY-3,hw0*.5,6,dkT)+E(cx0,shY-2,hw0*.3,4.5,gs);
+if(t==12&&!sd){if(!bk)tp+=`<path d="M${f1(X-hw0*.35)} ${f1(shY-3)}L${X} ${f1(shY+hw0*.6)}L${f1(X+hw0*.35)} ${f1(shY-3)}Z" fill="${gs}" stroke="${lt(tc,.4)}" stroke-width="1.6"/><circle cx="${f1(X-sw*.4)}" cy="${f1(shY+d.tor*.22)}" r="4" fill="${lt(tc,.6)}"/>`;for(const s of[-1,1])tp+=LN(f1(X+s*(bw(shY+8)-3)),f1(shY+6),f1(X+s*(bw(wY)-1)),f1(ty1-2),lt(tc,.6),3)}
+if(t==6)tp+=`<path d="${TS(ty0-3,ty0+4,3)}" fill="${lt(tc,.3)}"/>`}
+if(t!=8&&!sd){
+if(t==0||t==2||t==7)tp+=`<path d="M${f1(X-hw0*.42)} ${f1(shY-3)}Q${X} ${f1(shY-3+(bk?5:hw0*.5))} ${f1(X+hw0*.42)} ${f1(shY-3)}Z" fill="${gs}" stroke="${lt(tc,.3)}" stroke-width="1.6"/>`;
+if([0,1,2,5,6,7,9,10,12].includes(t))tp+=LN(f1(TL(ty1)-2),f1(ty1),f1(TR(ty1)+2),f1(ty1),dk(tc,.22),1.6);
+if(sl&&t!=4&&t!=13&&!armsOver&&!armsUnder)for(const s of[-1,1]){const c=AP(s,sl);tp+=E(c[0],c[1],aw*(.58-.2*sl)+2.4,1.8,dk(tc,.25))}
+if([0,2,5,7,9,10].includes(t))tp+=`<path d="M${f1(X-ww*.9)} ${f1(wY-4)}Q${X} ${f1(wY+2)} ${f1(X+ww*.9)} ${f1(wY-4)}" ${ST(dk(tc,.25),1.2)} opacity=".3"/>`;
+if(t==3){for(let x=-bw(ty0)+2;x<=bw(ty0)-2;x+=6)tp+=`<circle cx="${f1(X+x)}" cy="${f1(ty0+1)}" r="2.4" fill="${lt(tc,.55)}"/>`;for(const s of[-1,1])tp+=LN(f1(X+s*sw*.3),f1(ty0+4),f1(X+s*ww*.45),f1(ty1-2),dk(tc,.25),1)}}
+if(sd)nearArm=arm(1,gs)+(sl?slv(1,sl):'');
+else if(armsOver)nearArm=[-1,1].map(s=>arm(s,gs)+(sl?slv(s,sl):'')+(sl&&t!=4&&t!=13?(c=>E(c[0],c[1],aw*(.58-.2*sl)+2.4,1.8,dk(tc,.25)))(AP(s,sl)):'')).join('');
+const pr=Math.max(3.6,hr*.1);
+const tcl=TS(ty0,ty1,2.2)+(sl&&!sd&&!armsOver&&!armsUnder?[-1,1].map(s=>AR(s,sl,spd)).join(''):'');
+const dT=t!=8?dec(S.topD,CLO[S.topC2],'t',tcl,X-sw-30,X+sw+30,ty0,ty1,pr):'';
+const dB=q!=11?dec(S.botD,CLO[S.botC2],'b',bD,X-bW-20,X+bW+20,wY,bY1,pr):'';
+// face
+const ex=hr*.4,ey=cy+hr*.14,es=hr*[.255,.21,.19][S.age]*(S.sex?.85:1),mg=hr*.22,ny=cy+hr*.46,my=cy+hr*.7,st0=S.eye;
+const eyeM=s=>{const x=X+s*ex,st=st0,kid=S.age==0,hh=es*[1,.82,1,.72,.82,1.18,.95,.82][st]*(kid?1.12:1),w=es*1.02,xi=x-s*w,xo=x+s*w,yi=ey+hh*.15,yo=ey-hh*(st==4?.35:st==6?-.25:.05),id=s<0?'cmL':'cmR',dkL='#201514';
+const brow=`<path d="M${f1(x-es*1.05)} ${f1(ey-es*1.35)}Q${f1(x)} ${f1(ey-es*1.62)} ${f1(x+es*1.1)} ${f1(ey-es*1.4)}" ${ST(dk(hc,.12),4.2)} opacity=".9"/>`;
+if(st==7)return `<path d="M${f1(xi)} ${f1(ey+hh*.2)}Q${f1(x)} ${f1(ey-hh*1.2)} ${f1(xo)} ${f1(ey+hh*.2)}" fill="none" stroke="${dkL}" stroke-width="2.6" stroke-linecap="round"/>`+brow;
+const lid=`M${f1(xi)} ${f1(yi)}Q${f1(x)} ${f1(ey-hh*1.5)} ${f1(xo)} ${f1(yo)}`,eyeD=lid+`Q${f1(x)} ${f1(ey+hh*1.05)} ${f1(xi)} ${f1(yi)}Z`,ir=hh*.88;
+let r=`<clipPath id="${id}"><path d="${eyeD}"/></clipPath><path d="${eyeD}" fill="#f6f0ea"/><g clip-path="url(#${id})"><circle cx="${f1(x+s*es*.05)}" cy="${f1(ey+hh*.1)}" r="${f1(ir)}" fill="url(#gi)"/><circle cx="${f1(x+s*es*.05)}" cy="${f1(ey+hh*.1)}" r="${f1(ir)}" fill="none" stroke="${dk(EYE[S.eyeC],.45)}" stroke-width="1.1"/><circle cx="${f1(x+s*es*.05)}" cy="${f1(ey+hh*.12)}" r="${f1(hh*.34)}" fill="#14100f"/><circle cx="${f1(x-hh*.3)}" cy="${f1(ey-hh*.28)}" r="${f1(hh*.17)}" fill="#fff" opacity=".9"/><path d="${lid}" fill="none" stroke="${dkL}" stroke-width="5" opacity=".3"/></g>`;
+if(S.lid)r+=`<path d="${lid}Q${f1(x)} ${f1(ey-hh*2.6)} ${f1(xi)} ${f1(yi)}Z" fill="${SHAD[S.lidC]}" opacity=".5"/>`;
+r+=`<path d="${lid}" fill="none" stroke="${dkL}" stroke-width="2.4" stroke-linecap="round"/><path d="M${f1(xi+s*w*.15)} ${f1(yi+hh*.12)}Q${f1(x)} ${f1(ey+hh*1.05)} ${f1(xo-s*w*.1)} ${f1(yo+hh*.3)}" fill="none" stroke="${dk(sk,.35)}" stroke-width="1" opacity=".5"/><path d="M${f1(xi+s*w*.1)} ${f1(yi-hh*.7)}Q${f1(x)} ${f1(ey-hh*2.1)} ${f1(xo)} ${f1(yo-hh*.7)}" fill="none" stroke="${dk(sk,.32)}" stroke-width="1.2" opacity=".5"/>`+E(x,ey+hh*1.5,w*.9,hh*.35,dk(sk,.3),'opacity=".1"');
+return (st==6?`<g transform="rotate(${s*8} ${f1(x)} ${f1(ey)})">`+r+'</g>':r)+brow};
+const eye=s=>{if(S.sex)return eyeM(s);const x=X+s*ex,st=st0,xi=x-s*es,xo=x+s*es;let r='';
+const brow=`<path d="M${x-es} ${ey-es*(S.sex?1.4:1.6)}Q${x} ${ey-es*(S.sex?1.75:2.1)} ${x+es} ${ey-es*(S.sex?1.5:1.7)}" ${ST(S.sex?dk(hc,.1):'#6b4a42',S.sex?3.8:2.5)} opacity="${S.sex?.88:.7}"/>`;
+if(st==7){r+=`<path d="M${x-es*1.05} ${ey+es*.2}Q${x} ${ey-es*1} ${x+es*1.05} ${ey+es*.2}" ${ST('#2a1a1a',2.8)}/>`;for(const k of[-1,0,1])r+=LN(x+s*es*(.8+k*.12),ey-es*.35+Math.abs(k)*es*.1,x+s*es*(1.2+k*.12),ey-es*.75+Math.abs(k)*es*.15,'#2a1a1a',2);return r+brow}
+const g0=st==6?`<g transform="rotate(${s*10} ${x} ${ey})">`:'',g1=st==6?'</g>':'';
+r+=g0+(st==1?`<path d="M${x-es} ${ey}Q${x} ${ey-es*1.1} ${x+es} ${ey}Q${x} ${ey+es*.9} ${x-es} ${ey}Z" fill="#fff"/>`:st==4?`<path d="M${xi} ${ey+es*.3}Q${x} ${ey-es} ${xo} ${ey-es*.3}Q${x} ${ey+es*.85} ${xi} ${ey+es*.3}Z" fill="#fff"/>`:E(x,ey,es*(st==5?1.05:1),es*[1.1,0,1.1,.75,0,1.25,.95][st],'#fff'));
+r+=E(x,ey+es*.05,es*(st==5?.7:.62),es*[.72,.6,.72,.6,.55,.82,.7][st],EYE[S.eyeC])+E(x,ey+es*.2,es*.45,es*.3,lt(EYE[S.eyeC],.35),'opacity=".5"')+E(x,ey+es*.05,es*.3,es*.34,'#111')+`<circle cx="${x-es*.22}" cy="${ey-es*.25}" r="${es*.2}" fill="#fff"/><circle cx="${x+es*.2}" cy="${ey+es*.2}" r="${es*.1}" fill="#fff" opacity=".8"/>`;
+if(S.lid)r+=`<path d="M${x-es*1.1} ${ey-es*.1}Q${x} ${ey-es*1.9} ${x+es*1.1} ${ey-es*.1}Q${x} ${ey-es} ${x-es*1.1} ${ey-es*.1}Z" fill="${SHAD[S.lidC]}" opacity=".5"/>`;
+if(st==4)r+=`<path d="M${xi} ${ey+es*.3}Q${x} ${ey-es*1.55} ${xo} ${ey-es*.3}" ${ST('#2a1a1a',2.6)}/>`+LN(xo,ey-es*.3,xo+s*es*.45,ey-es*.62,'#2a1a1a',2.2);
+else r+=`<path d="M${x-es*1.05} ${ey}Q${x} ${ey-es*[1.4,1.25,1.4,.8,0,1.7,1.35][st]} ${x+es*1.05} ${ey}" ${ST('#2a1a1a',2.6)}/>`;
+if(!S.sex&&(st==2||st==5))for(const k of[-1,0,1])r+=LN(x+s*es*(.9+k*.1),ey-es*.5+k*es*.4,x+s*es*(1.5+k*.1),ey-es*.9+k*es*.5,'#2a1a1a',2);
+return (S.sex?`<g transform="translate(0 ${f1(ey*.15)}) scale(1 .85)">`+r+g1+'</g>':r+g1)+brow};
+const nw=hr*[.07,.075,.066,.1][S.nose]*(S.sex?1.2:1),ncol=dk(sk,.4);
+const nose=`<path d="M${f1(X-nw)} ${f1(ny)}Q${f1(X-nw*1.5)} ${f1(ny+hr*.05)} ${f1(X-nw*.5)} ${f1(ny+hr*.06)}M${f1(X+nw)} ${f1(ny)}Q${f1(X+nw*1.5)} ${f1(ny+hr*.05)} ${f1(X+nw*.5)} ${f1(ny+hr*.06)}" fill="none" stroke="${ncol}" stroke-width="1.4" stroke-linecap="round" opacity=".7"/>`+E(X,ny-hr*.06,hr*.035,hr*.045,'#fff','opacity=".4"')+(S.nose==2?`<path d="M${f1(X-hr*.05)} ${f1(ny-hr*.28)}Q${f1(X-hr*.09)} ${f1(ny-hr*.1)} ${f1(X-nw)} ${f1(ny)}" fill="none" stroke="${ncol}" stroke-width="1.2" opacity=".35"/>`:'')+(S.nose==1?E(X,ny+hr*.06,nw*.5,hr*.02,ncol,'opacity=".35"'):'')+(S.sex?`<path d="M${f1(X-nw*.7)} ${f1(ny-hr*.3)}Q${f1(X-nw*1.1)} ${f1(ny-hr*.1)} ${f1(X-nw*1.2)} ${f1(ny)}M${f1(X+nw*.7)} ${f1(ny-hr*.3)}Q${f1(X+nw*1.1)} ${f1(ny-hr*.1)} ${f1(X+nw*1.2)} ${f1(ny)}" fill="none" stroke="${ncol}" stroke-width="1.1" opacity=".3"/>`:'');
+const pk=S.sex?.17:.32,mo=S.mouth,mw=mg*(S.sex?.9:1)*[1,1.05,.72,.9][mo],cr=mg*[.1,.2,0,-.12][mo],mC=lt(lp,.12),open=mo==1;
+const up=`M${f1(X-mw)} ${f1(my-cr)}Q${f1(X-mw*.45)} ${f1(my-mg*pk)} ${f1(X-mw*.12)} ${f1(my-mg*pk*.8)}Q${X} ${f1(my-mg*pk*.55)} ${f1(X+mw*.12)} ${f1(my-mg*pk*.8)}Q${f1(X+mw*.45)} ${f1(my-mg*pk)} ${f1(X+mw)} ${f1(my-cr)}`;
+const lline=`M${f1(X-mw)} ${f1(my-cr)}Q${X} ${f1(my+mg*(open?.05:.1))} ${f1(X+mw)} ${f1(my-cr)}`;
+const mouth=(open?`<path d="M${f1(X-mw)} ${f1(my-cr)}Q${X} ${f1(my+mg*1.3)} ${f1(X+mw)} ${f1(my-cr)}Z" fill="#7a2030"/><path d="M${f1(X-mw*.85)} ${f1(my-cr+1)}Q${X} ${f1(my+mg*.15)} ${f1(X+mw*.85)} ${f1(my-cr+1)}L${f1(X+mw*.8)} ${f1(my-cr+mg*.1)}Q${X} ${f1(my+mg*.3)} ${f1(X-mw*.8)} ${f1(my-cr+mg*.1)}Z" fill="#fff"/><path d="M${f1(X-mw)} ${f1(my-cr)}Q${X} ${f1(my+mg*1.3)} ${f1(X+mw)} ${f1(my-cr)}" fill="none" stroke="${mC}" stroke-width="3.5"/>`:`<path d="${lline}Q${X} ${f1(my+mg*(mo==3?1:mo==2?1.05:.85)*(S.sex?.6:1))} ${f1(X-mw)} ${f1(my-cr)}Z" fill="${mC}"/>`)
++`<path d="${up}Q${X} ${f1(my+mg*(open?.05:.1))} ${f1(X-mw)} ${f1(my-cr)}Z" fill="${lp}"/>`+(open||S.sex?'':E(X,my+mg*.42,mw*.32,mg*.09,'#fff','opacity=".5"'))+E(X,my+mg*1.0,mg*.45,mg*.13,dk(sk,.3),'opacity=".16"');
+const cw=S.age==0?.16:.3,HP=S.sex?`M${X-hr*.84} ${cy}A${hr*.84} ${hr} 0 0 1 ${X+hr*.84} ${cy}C${X+hr*.84} ${cy+hr*.62} ${X+hr*.66} ${cy+hr} ${X+cw*hr} ${cy+hr}L${X-cw*hr} ${cy+hr}C${X-hr*.66} ${cy+hr} ${X-hr*.84} ${cy+hr*.62} ${X-hr*.84} ${cy}Z`:`M${X-hr*.8} ${cy}A${hr*.8} ${hr} 0 0 1 ${X+hr*.8} ${cy}C${X+hr*.8} ${cy+hr*.55} ${X+hr*.42} ${cy+hr*.97} ${X} ${cy+hr}C${X-hr*.42} ${cy+hr*.97} ${X-hr*.8} ${cy+hr*.55} ${X-hr*.8} ${cy}Z`;
+const face=E(X-hr*(S.sex?.84:.8),cy+hr*.15,hr*.12,hr*.17,sk,`stroke="${ol}" stroke-width=".8"`)+E(X+hr*(S.sex?.84:.8),cy+hr*.15,hr*.12,hr*.17,sk,`stroke="${ol}" stroke-width=".8"`)+`<path d="${HP}" fill="${gs}" stroke="${ol}" stroke-width=".9"/>`+E(X,cy-hr*.45,hr*.45,hr*.2,'#fff','opacity=".12"')+(S.sex?`<path d="M${f1(X-hr*.8)} ${f1(cy+hr*.3)}Q${f1(X-hr*.75)} ${f1(cy+hr*.85)} ${f1(X-hr*.3)} ${f1(cy+hr)}M${f1(X+hr*.8)} ${f1(cy+hr*.3)}Q${f1(X+hr*.75)} ${f1(cy+hr*.85)} ${f1(X+hr*.3)} ${f1(cy+hr)}" fill="none" stroke="${dk(sk,.3)}" stroke-width="2" opacity=".25"/>`:'');
+const bc2=dk(hc,.1),bpath=`M${X-hr*.8} ${cy+hr*.2}C${X-hr*.82} ${cy+hr*.85} ${X-hr*.4} ${cy+hr*1.06} ${X} ${cy+hr*1.04}C${X+hr*.4} ${cy+hr*1.06} ${X+hr*.82} ${cy+hr*.85} ${X+hr*.8} ${cy+hr*.2}L${X+hr*.62} ${cy+hr*.36}Q${X+hr*.4} ${cy+hr*.52} ${X+hr*.3} ${cy+hr*.6}Q${X} ${cy+hr*.56} ${X-hr*.3} ${cy+hr*.6}Q${X-hr*.4} ${cy+hr*.52} ${X-hr*.62} ${cy+hr*.36}Z`,bmus=`<path d="M${X-hr*.3} ${cy+hr*.6}Q${X-hr*.15} ${cy+hr*.5} ${X} ${cy+hr*.56}Q${X+hr*.15} ${cy+hr*.5} ${X+hr*.3} ${cy+hr*.6}Q${X+hr*.15} ${cy+hr*.66} ${X} ${cy+hr*.62}Q${X-hr*.15} ${cy+hr*.66} ${X-hr*.3} ${cy+hr*.6}Z" fill="${bc2}"/>`,B=S.sex&&S.age?S.beard:0;
+const bdF=B==1?`<path d="${bpath}" fill="${bc2}" opacity=".35"/>`:B==2?`<path d="${bpath}" fill="${bc2}"/>`:B==3?bmus:B==4?E(X,cy+hr*.9,hr*.2,hr*.14,bc2)+bmus:B==5?R(X-hr*.8,cy+hr*.05,hr*.13,hr*.35,bc2,3)+R(X+hr*.67,cy+hr*.05,hr*.13,hr*.35,bc2,3):'';
+const bsp=`M${X-hr*.2} ${cy+hr*.35}Q${X-hr*.3} ${cy+hr*.95} ${X+hr*.3} ${cy+hr*.98}Q${X+hr*.7} ${cy+hr*1.02} ${X+hr*.8} ${cy+hr*.8}Q${X+hr*.6} ${cy+hr*.78} ${X+hr*.4} ${cy+hr*.6}Q${X+hr*.1} ${cy+hr*.55} ${X-hr*.2} ${cy+hr*.35}Z`;
+const bdS=B==1?`<path d="${bsp}" fill="${bc2}" opacity=".35"/>`:B==2?`<path d="${bsp}" fill="${bc2}"/>`:B==3?E(X+hr*.82,cy+hr*.6,hr*.1,hr*.05,bc2):B==4?E(X+hr*.72,cy+hr*.92,hr*.12,hr*.1,bc2)+E(X+hr*.82,cy+hr*.6,hr*.1,hr*.05,bc2):B==5?R(X-hr*.1,cy+hr*.1,hr*.1,hr*.3,bc2,2):'';
+const fkP=S.fk?[[-.3,.38],[.3,.38],[-.45,.45],[.45,.45],[-.15,.32],[.15,.32],[-.2,.5],[.2,.5]].slice(0,S.fk==1?4:8):[],fd=(x,y)=>`<circle cx="${x}" cy="${y}" r="${hr*.028}" fill="${dk(sk,.3)}" opacity=".65"/>`;
+const feat=fkP.map(([a,c])=>fd(X+a*hr,cy+c*hr)).join('')+E(X-hr*.46,cy+hr*.52,hr*.24,hr*.17,'url(#gbl)',S.sex?`opacity="${S.age?.12:.3}"`:'')+E(X+hr*.46,cy+hr*.52,hr*.24,hr*.17,'url(#gbl)',S.sex?`opacity="${S.age?.12:.3}"`:'')+eye(-1)+eye(1)+nose+mouth;
+const FH=[`<path d="M${X-hr*.97} ${cy+hr*.15}C${X-hr*1.1} ${cy-hr*1.4} ${X+hr*1.1} ${cy-hr*1.4} ${X+hr*.97} ${cy+hr*.15}C${X+hr*.8} ${cy-hr*.45} ${X+hr*.1} ${cy-hr*.45} ${X-hr*.25} ${cy-hr*.1}C${X-hr*.5} ${cy-hr*.4} ${X-hr*.8} ${cy-hr*.1} ${X-hr*.97} ${cy+hr*.15}Z" fill="${hf}"/>`,
+`<path d="M${X-hr*.97} ${cy+hr*.15}C${X-hr*1.1} ${cy-hr*1.4} ${X+hr*1.1} ${cy-hr*1.4} ${X+hr*.97} ${cy+hr*.15}L${X+hr*.9} ${cy-hr*.1}Q${X} ${cy-hr*.72} ${X-hr*.9} ${cy-hr*.1}Z" fill="${hf}"/>`,
+`<path d="M${X-hr*.97} ${cy+hr*.15}C${X-hr*1.1} ${cy-hr*1.4} ${X+hr*1.1} ${cy-hr*1.4} ${X+hr*.97} ${cy+hr*.15}C${X+hr*.9} ${cy-hr*.3} ${X+hr*.35} ${cy-hr*.65} ${X} ${cy-hr*.95}C${X-hr*.35} ${cy-hr*.65} ${X-hr*.9} ${cy-hr*.3} ${X-hr*.97} ${cy+hr*.15}Z" fill="${hf}"/>`,
+`<path d="M${X-hr*.95} ${cy+hr*.05}C${X-hr*1.1} ${cy-hr*1.4} ${X+hr*1.1} ${cy-hr*1.4} ${X+hr*.95} ${cy+hr*.05}C${X+hr*.9} ${cy-hr*.6} ${X+hr*.4} ${cy-hr*.75} ${X} ${cy-hr*.78}C${X-hr*.4} ${cy-hr*.75} ${X-hr*.9} ${cy-hr*.6} ${X-hr*.95} ${cy+hr*.05}Z" fill="${hf}"/>`];
+const capS=[-3,-2,-1,0,1,2,3].map(j=>`<path d="M${f1(X+j*hr*.1)} ${f1(cy-hr*1.08)}Q${f1(X+j/3*hr*.5)} ${f1(cy-hr*.85)} ${f1(X+j/3*hr*.92)} ${f1(cy+hr*.05)}" fill="none" stroke="${j%2?lt(hc,.45):dk(hc,.4)}" stroke-width="1.1" opacity=".3"/>`).join('');
+const FI=h==30?1:S.fr,fh=FH[FI]+`<clipPath id="cfh">${FH[FI].replace(/ fill="[^"]*"/,'')}</clipPath><g clip-path="url(#cfh)">`+capS+`<path d="M${X-hr*.6} ${cy-hr*.68}Q${X-hr*.1} ${cy-hr*1.05} ${X+hr*.45} ${cy-hr*.85}" ${ST('#fff',8)} opacity=".1"/>`+`<path d="M${X-hr*.55} ${cy-hr*.7}Q${X-hr*.1} ${cy-hr*1.02} ${X+hr*.4} ${cy-hr*.85}" ${ST('#fff',3)} opacity=".28"/></g>`,fs=S.fr==3?-.42:-.1;
+// side head
+const nt=[1.04,1.08,1.1,1.13][S.nose],nyo=[.4,.36,.42,.45][S.nose],ex2=X+hr*.5;
+const sHead=E(X-hr*.05,cy-hr*.05,hr*.93,hr*.98,sk)+`<path d="M${X} ${cy-hr*.95}C${X+hr*.6} ${cy-hr} ${X+hr*.88} ${cy-hr*.5} ${X+hr*.86} ${cy-hr*.2}Q${X+hr*.88} ${cy+hr*.1} ${X+hr*.93} ${cy+hr*.2}L${X+hr*nt} ${cy+hr*nyo}L${X+hr*.9} ${cy+hr*.52}Q${X+hr*.92} ${cy+hr*.6} ${X+hr*.88} ${cy+hr*.64}Q${X+hr*.95} ${cy+hr*.7} ${X+hr*.86} ${cy+hr*.76}Q${X+hr*.84} ${cy+hr*.86} ${X+hr*.72} ${cy+hr*.93}Q${X+hr*.5} ${cy+hr} ${X+hr*.1} ${cy+hr*.92}L${X-hr*.5} ${cy+hr*.6}L${X-hr*.8} ${cy}Z" fill="${sk}"/>`
++fkP.filter(p=>p[0]>0).map(([a,c])=>fd(X+(a*.8+.3)*hr,cy+c*hr)).join('')+E(X+hr*.45,cy+hr*.5,hr*.14,hr*.1,'#ff7a9a','opacity=".3"')+`<g transform="translate(${ex2-(X+ex)*.65} 0) scale(.65 1)">${eye(1)}</g>`
++E(X+hr*.9,cy+hr*.62,hr*.05,hr*.035,lp)+E(X+hr*.9,cy+hr*.71,hr*.055,hr*.04,lp)
++`<path d="M${X+hr*.86} ${cy+hr*.665}Q${X+hr*.7} ${cy+hr*(S.mouth==3?.64:.72)} ${X+hr*.6} ${cy+hr*(S.mouth==3?.7:.66)}" ${ST(lp,2)}/>`;
+const sCap=`<path d="M${X+hr*.9} ${cy+hr*fs}C${X+hr*.95} ${cy-hr*1.25} ${X-hr*1.1} ${cy-hr*1.35} ${X-hr} ${cy+hr*.2}L${X-hr*.95} ${cy+hr*.55}Q${X-hr*.3} ${cy+hr*.4} ${X-hr*.2} ${cy-hr*.05}Q${X+hr*.3} ${cy+hr*(fs-.45)} ${X+hr*.9} ${cy+hr*fs}Z" fill="${hf}"/><path d="M${X-hr*.3} ${cy-hr*.9}Q${X+hr*.2} ${cy-hr*1.1} ${X+hr*.6} ${cy-hr*.8}" ${ST('#fff',3)} opacity=".28"/>`+E(X-hr*.12,cy+hr*.2,hr*.12,hr*.18,sk)+E(X-hr*.12,cy+hr*.22,hr*.06,hr*.1,dk(sk,.12));
+// extras
+const apt=AP;
+const qp=(t,p0,pc,p2)=>[(1-t)*(1-t)*p0[0]+2*t*(1-t)*pc[0]+t*t*p2[0],(1-t)*(1-t)*p0[1]+2*t*(1-t)*pc[1]+t*t*p2[1]];
+const GL=(ac,fill,v)=>{const w=es*1.35,h=es*1.15,sa=`stroke="${ac}" stroke-width="2.5"`;
+const lens=(cx,s)=>v==1?`<rect x="${f1(cx-w)}" y="${f1(ey-h)}" width="${f1(2*w)}" height="${f1(2*h)}" rx="${f1(h*.35)}" fill="${fill}" ${sa}/>`:v==2?`<path d="M${f1(cx-s*w)} ${f1(ey)}Q${f1(cx-s*w*.6)} ${f1(ey-h*.9)} ${f1(cx+s*w*1.15)} ${f1(ey-h*1.05)}Q${f1(cx+s*w*.8)} ${f1(ey+h*.9)} ${f1(cx)} ${f1(ey+h*.95)}Q${f1(cx-s*w*.8)} ${f1(ey+h*.9)} ${f1(cx-s*w)} ${f1(ey)}Z" fill="${fill}" ${sa} stroke-linejoin="round"/>`:v==3?`<g transform="translate(${f1(cx)} ${f1(ey)})"><path d="M0 ${f1(h*.95)}C${f1(-w*1.5)} ${f1(-h*.1)} ${f1(-w*.7)} ${f1(-h*1.2)} 0 ${f1(-h*.5)}C${f1(w*.7)} ${f1(-h*1.2)} ${f1(w*1.5)} ${f1(-h*.1)} 0 ${f1(h*.95)}Z" fill="${fill}" ${sa} stroke-linejoin="round"/></g>`:E(cx,ey,w,h,fill,sa);
+return sd?lens(ex2,1)+LN(ex2-w,ey,X-hr*.1,cy+hr*.1,ac,2.5):lens(X-ex,-1)+lens(X+ex,1)+LN(X-ex+w,ey,X+ex-w,ey,ac,2.5)};
+const XF=(a,ac,v)=>{let xt='';const ty=cy-hr*.88,lc=lt(ac,.45),dc=dk(ac,.25),G=(f,c=ac)=>`<g fill="${c}" stroke="#0003" stroke-width=".6">${f}</g>`;
+if(a==1){if(v==0)xt=`<path d="M${X-hr*.45} ${ty}L${X-hr*.5} ${ty-hr*.35}L${X-hr*.25} ${ty-hr*.15}L${X} ${ty-hr*.45}L${X+hr*.25} ${ty-hr*.15}L${X+hr*.5} ${ty-hr*.35}L${X+hr*.45} ${ty}Z" fill="${ac}" stroke="#b8901a" stroke-width="1.5"/>`;
+if(v==1)xt=`<path d="M${X-hr*.62} ${ty+hr*.1}Q${X} ${ty-hr*.85} ${X+hr*.62} ${ty+hr*.1}" ${ST(ac,3.2)}/>`+[-1,0,1].map(k=>`<circle cx="${X+k*hr*.31}" cy="${ty-hr*(k?.256:.375)}" r="${hr*(k?.06:.09)}" fill="${lc}" stroke="${dc}" stroke-width=".8"/>`).join('');
+if(v==2)xt=`<path d="M${X-hr*.5} ${ty+hr*.05}Q${X} ${ty-hr*.35} ${X+hr*.5} ${ty+hr*.05}" ${ST(ac,2)}/><path d="M${X} ${ty-hr*.28}l${hr*.07} ${hr*.09}l${-hr*.07} ${hr*.09}l${-hr*.07} ${-hr*.09}z" fill="${lc}" stroke="${dc}" stroke-width=".8"/>`;
+if(v==3)for(let k=-5;k<=5;k++){const dx=k*hr*.17,yy=cy-Math.sqrt(Math.max(0,1-(dx/(hr*.97))**2))*hr+hr*.04;xt+=E(X+dx+hr*.08,yy+hr*.03,hr*.08,hr*.045,'#4caf50')+`<circle cx="${f1(X+dx)}" cy="${f1(yy)}" r="${hr*.07}" fill="${k%2?lc:ac}" stroke="${dc}" stroke-width=".6"/>`}
+if(sd)xt=sq(.5,-hr*.05,xt)}
+if(a==2){const bx=sd?X-hr*.5:bk?X-hr*.6:X+hr*.6,by=cy-hr*.85;
+if(v==0)xt=E(bx-hr*.2,by,hr*.22,hr*.12,ac,`transform="rotate(-25 ${bx-hr*.2} ${by})"`)+E(bx+hr*.2,by,hr*.22,hr*.12,ac,`transform="rotate(25 ${bx+hr*.2} ${by})"`)+`<circle cx="${bx}" cy="${by}" r="${hr*.08}" fill="${ac}" stroke="#0003"/>`;
+if(v==1){const b2=sd?X-hr*.2:X,y2=cy-hr;xt=E(b2-hr*.3,y2,hr*.36,hr*.2,ac,`transform="rotate(-20 ${b2-hr*.3} ${y2})" stroke="#0003" stroke-width=".6"`)+E(b2+hr*.3,y2,hr*.36,hr*.2,ac,`transform="rotate(20 ${b2+hr*.3} ${y2})" stroke="#0003" stroke-width=".6"`)+`<circle cx="${b2}" cy="${y2}" r="${hr*.11}" fill="${dc}"/>`}
+if(v==2)xt=G(star(bx,by,hr*.17));if(v==3)xt=G(heart(bx,by,hr*.15))}
+if(a==3){const sh0=[X-sw*.45,shY+2],sh1=[X+sw*.45,shY+2],dp=v==3?sw*1.9:sw*.9,mid=qp(.5,sh0,[X,shY+dp],sh1);
+if(sd){const e=[X+xf(shY+d.tor*.2)+1,shY+d.tor*.2],c0=[X-sp*.1,shY+1],cc=[X+sp*.5,shY+sw*.4];
+if(v==2)xt=E(X+nx*.4,shY-6,hr*.2,3.5,ac);
+else if(v==1){for(let t=0;t<=1.01;t+=.1){const q=qp(t,c0,cc,e);xt+=`<circle cx="${f1(q[0])}" cy="${f1(q[1])}" r="2.3" fill="${lt(ac,.6)}" stroke="${dc}" stroke-width=".6"/>`}}
+else xt=`<path d="M${f1(c0[0])} ${f1(c0[1])}Q${f1(cc[0])} ${f1(cc[1])} ${f1(e[0])} ${f1(e[1])}" ${ST(ac,3)}/><circle cx="${f1(e[0])}" cy="${f1(e[1])}" r="3.5" fill="${v>=4?lc:ac}" stroke="#0003"/>`}
+else{if(v==2)xt=`<path d="M${X-hr*.18} ${shY-10}Q${X} ${shY-2} ${X+hr*.18} ${shY-10}" ${ST(ac,3.5)}/><circle cx="${X}" cy="${shY-5}" r="3.2" fill="${lc}" stroke="${dc}" stroke-width=".7"/>`;
+else if(v==1){for(let t=0;t<=1.01;t+=.07){const q=qp(t,sh0,[X,shY+dp],sh1);xt+=`<circle cx="${f1(q[0])}" cy="${f1(q[1])}" r="2.5" fill="${lt(ac,.6)}" stroke="${dc}" stroke-width=".6"/>`}}
+else{xt=`<path d="M${f1(sh0[0])} ${f1(sh0[1])}Q${X} ${f1(shY+dp)} ${f1(sh1[0])} ${f1(sh1[1])}" ${ST(ac,3)}/>`;xt+=v==4?G(heart(mid[0],mid[1]+2,5.5)):v==5?G(star(mid[0],mid[1]+2,6.5)):`<circle cx="${f1(mid[0])}" cy="${f1(mid[1])}" r="4" fill="${ac}" stroke="#0003"/>`}}}
+if(a==4)xt=GL(ac,'none',v);
+if(a==5)for(const[x,y]of sd?[[X-hr*.12,cy+hr*.36]]:[[X-hr*.82,cy+hr*.38],[X+hr*.82,cy+hr*.38]])xt+=v==0?`<circle cx="${f1(x)}" cy="${f1(y)}" r="4" fill="${ac}" stroke="#0003"/>`:v==1?`<circle cx="${f1(x)}" cy="${f1(y+6)}" r="6" fill="none" stroke="${ac}" stroke-width="2"/>`:v==2?G(heart(x,y+7,4.5)):v==3?G(star(x,y+7,5.5)):`<path d="M${f1(x)} ${f1(y)}L${f1(x)} ${f1(y+5)}" ${ST(ac,1.5)}/>`+E(x,y+10,3,4.5,ac,'stroke="#0003" stroke-width=".5"');
+if(a==6){if(v==0)xt=E(X,cy-hr*1.05,hr*.78,hr*.5,ac)+E(X,cy-hr*.82,hr*1.45,hr*.2,ac)+E(X,cy-hr*.8,hr*.8,hr*.06,'#0003');
+if(v==1)xt=`<g transform="rotate(-12 ${X} ${cy-hr*.95})">`+E(X+hr*.1,cy-hr*.95,hr*.95,hr*.34,ac)+E(X+hr*.1,cy-hr*.86,hr*.9,hr*.1,dc,'opacity=".45"')+`<circle cx="${X+hr*.1}" cy="${cy-hr*1.3}" r="${hr*.07}" fill="${dc}"/></g>`;
+if(v==2){xt=`<path d="M${X-hr*.95} ${cy-hr*.35}Q${X-hr*1.05} ${cy-hr*1.5} ${X} ${cy-hr*1.45}Q${X+hr*1.05} ${cy-hr*1.5} ${X+hr*.95} ${cy-hr*.35}Z" fill="${ac}"/><circle cx="${X}" cy="${cy-hr*1.44}" r="${hr*.06}" fill="${dc}"/>`;if(!bk)xt+=sd?`<path d="M${X+hr*.55} ${cy-hr*.5}L${X+hr*1.55} ${cy-hr*.3}L${X+hr*.6} ${cy-hr*.3}Z" fill="${dc}"/>`:E(X,cy-hr*.33,hr*.8,hr*.13,dc)}
+if(v==3)xt=E(X,cy-hr*.82,hr*1.75,hr*.27,ac,'stroke="#0003" stroke-width=".6"')+E(X,cy-hr*1.08,hr*.8,hr*.5,ac)+R(X-hr*.8,cy-hr*.98,hr*1.6,hr*.14,'#fff',hr*.04);
+if(v==4)xt=E(X,cy-hr*.45,hr*1.25,hr*.18,dc)+`<path d="M${X-hr*.9} ${cy-hr*.45}L${X-hr*.75} ${cy-hr*1.3}L${X+hr*.75} ${cy-hr*1.3}L${X+hr*.9} ${cy-hr*.45}Z" fill="${ac}"/>`;
+if(sd&&v!=2)xt=sq(.95,-hr*.05,xt)}
+if(a==7){const P0=sd?[X+hr*.85,cy-hr*.3]:[X-hr*.9,cy-hr*.1],Pc=sd?[X-hr*.1,cy-hr*1.3]:[X,cy-hr*1.4],P2=sd?[X-hr*.95,cy+hr*.1]:[X+hr*.9,cy-hr*.1];
+if(v==2)xt=`<path d="M${f1(P0[0])} ${f1(P0[1]+hr*.12)}Q${f1(Pc[0])} ${f1(Pc[1]+hr*.5)} ${f1(P2[0])} ${f1(P2[1]+hr*.12)}" ${ST(ac,9)} opacity=".95"/>`;
+else{xt=`<path d="M${f1(P0[0])} ${f1(P0[1])}Q${f1(Pc[0])} ${f1(Pc[1])} ${f1(P2[0])} ${f1(P2[1])}" ${ST(ac,4)}/>`;
+if(v==1){const q=qp(sd?.3:.78,P0,Pc,P2);xt+=E(q[0]-hr*.12,q[1]-hr*.04,hr*.14,hr*.08,ac,`transform="rotate(-20 ${q[0]} ${q[1]})"`)+E(q[0]+hr*.12,q[1]-hr*.04,hr*.14,hr*.08,ac,`transform="rotate(20 ${q[0]} ${q[1]})"`)+`<circle cx="${f1(q[0])}" cy="${f1(q[1])}" r="${hr*.06}" fill="${dc}"/>`}
+if(v==3)for(const t of[.25,.5,.75]){const q=qp(t,P0,Pc,P2);xt+=`<g fill="${t==.5?'#fff':lc}">${flower(q[0],q[1],hr*.11)}</g>`}}}
+if(a==8)xt=GL(ac,'#222',v);
+if(a==9){const band=sd?E(X+nx*.4,shY-6,hr*.2,7,ac):R(X-hr*.34,shY-13,hr*.68,13,ac,6);
+if(v==0)xt=band+(sd?R(X+xf(shY+10)-hr*.1,shY,hr*.2,d.tor*.4,ac,4):bk?'':R(X+hr*.05,shY-2,hr*.2,d.tor*.42,lt(ac,.15),4));
+if(v==1)xt=band+(sd||bk?'':`<path d="M${X-hr*.36} ${shY-8}L${X+hr*.36} ${shY-8}L${X} ${shY+hr*.62}Z" fill="${ac}" stroke="#0003" stroke-width=".7"/>`+[[-.12,.1],[.12,.1],[0,.3]].map(([a1,b1])=>`<circle cx="${X+a1*hr}" cy="${shY+b1*hr}" r="${hr*.035}" fill="${lc}"/>`).join(''));
+if(v==2){if(sd)xt=E(X+nx*.4,shY-6,hr*.22,8,lc,`stroke="${ac}" stroke-width="1"`);else for(let k=-4;k<=4;k++)xt+=`<circle cx="${f1(X+k*hr*.085)}" cy="${f1(shY-6+Math.abs(k)*.4)}" r="${hr*.11}" fill="${lc}" stroke="${ac}" stroke-width=".7"/>`}
+if(v==3){if(sd)xt=band;else xt=`<path d="M${X} ${shY-6}L${X-hr*.3} ${shY-14}L${X-hr*.3} ${shY+2}Z M${X} ${shY-6}L${X+hr*.3} ${shY-14}L${X+hr*.3} ${shY+2}Z" fill="${ac}" stroke="#0003" stroke-width=".7"/><circle cx="${X}" cy="${shY-6}" r="${hr*.06}" fill="${dc}"/>`}}
+if(a==10){const bx0=sd?X+xf(wY):X;
+if(v==0)xt=`<path d="${TS(wY-3,wY+4,2.8)}" fill="${ac}"/>`+(sd?R(bx0-1,wY-4,5,9,'#d4af37',2):R(X-5,wY-4,10,9,'#d4af37',2));
+if(v==1)xt=`<path d="${TS(wY-6,wY+8,2.8)}" fill="${ac}"/>`+(sd?R(bx0-2,wY-6,6,14,'#d4af37',2):R(X-8,wY-6,16,14,'#d4af37',3)+R(X-5,wY-3,10,8,ac,2));
+if(v==2)for(let k=0;k<(sd?3:9);k++){const x=sd?X-xb(wY)+(xb(wY)+xf(wY))*k/2:X+(k-4)/4*(bw(wY)+1),y=wY+(sd?0:((k-4)/4)**2*1.5);xt+=`<circle cx="${f1(x)}" cy="${f1(y)}" r="2.6" fill="#d4af37" stroke="${dc}" stroke-width=".6"/>`}
+if(v==3){const bb=sd?bx0:X;xt=`<path d="${TS(wY-3,wY+4,2.8)}" fill="${ac}"/>`+E(bb-7,wY,7,4,ac,`transform="rotate(-20 ${bb-7} ${wY})" stroke="#0003" stroke-width=".5"`)+E(bb+7,wY,7,4,ac,`transform="rotate(20 ${bb+7} ${wY})" stroke="#0003" stroke-width=".5"`)+`<circle cx="${bb}" cy="${wY}" r="2.6" fill="${dc}"/>`}}
+if(a==11)for(const s of sd?[1]:[-1,1]){const A_=(t,rx,ry,c=ac)=>{const p=apt(s,t);return E(p[0],p[1],rx,ry,c,'stroke="#0003" stroke-width=".6"')},r0=aw*.42;
+if(v==0)xt+=A_(.88,r0+1.6,2.6);if(v==1)xt+=A_(.88,r0+2.3,4.2);
+if(v==2){xt+=A_(.88,r0+1.4,2.4,'#6b4a42');const p=apt(s,.88);xt+=R(p[0]-4.2,p[1]-4.2,8.4,8.4,'#fff',2)+`<circle cx="${p[0]}" cy="${p[1]}" r="1.4" fill="${ac}"/>`}
+if(v==3)for(const t of[.78,.85,.92])xt+=A_(t,r0+1.2,1.6)}
+if(a==12){const hq=hP(1),hp=[hq[0],hq[1]+4];
+if(v==0)xt=`<path d="M${hp[0]-6} ${hp[1]+10}Q${hp[0]} ${hp[1]-1} ${hp[0]+6} ${hp[1]+10}" ${ST(ac,2)}/>`+R(hp[0]-10,hp[1]+10,20,15,ac,3)+R(hp[0]-10,hp[1]+10,20,6,dk(ac,.18),3);
+if(v==1){const sg=sd?[X+3,shY+3,X-xb(hipY)+2,hipY-4]:bk?[X-sw*.75,shY+3,X+hw*.95,hipY-4]:[X+sw*.75,shY+3,X-hw*.95,hipY-4],bxx=sd?X-xb(hipY)-12:bk?X+hw*1.1-8:X-hw*1.1-10;xt=LN(f1(sg[0]),f1(sg[1]),f1(sg[2]),f1(sg[3]),ac,3.2)+R(bxx,hipY-14,20,15,ac,3)+R(bxx,hipY-14,20,6,dk(ac,.18),3)}
+if(v==2){if(bk)xt=R(X-sw*.75,shY+5,sw*1.5,d.tor*.62,ac,9)+R(X-sw*.45,wY-2,sw*.9,d.tor*.22,dk(ac,.15),5)+LN(X-sw*.5,shY+3,X-sw*.5,shY+14,ac,4)+LN(X+sw*.5,shY+3,X+sw*.5,shY+14,ac,4);else if(sd)xt=R(X-xb(shY+25)-16,shY+8,18,d.tor*.6,ac,7)+R(X-xb(shY+25)-18,wY-4,10,d.tor*.2,dk(ac,.15),4);else xt=LN(X-sw*.45,shY+1,X-ww*.9,wY+8,ac,5)+LN(X+sw*.45,shY+1,X+ww*.9,wY+8,ac,5)}
+if(v==3)xt=R(hp[0]-12,hp[1]+6,24,26,ac,3)+R(hp[0]-12,hp[1]+14,24,5,lt(ac,.5),0)+`<path d="M${hp[0]-8} ${hp[1]+6}Q${hp[0]} ${hp[1]-14} ${hp[0]+8} ${hp[1]+6}" ${ST(ac,2)}/>`;
+if(v==4)xt=`<path d="M${hp[0]} ${hp[1]}L${hp[0]} ${hp[1]+8}" ${ST(dc,1.6)}/>`+R(hp[0]-7,hp[1]+8,14,10,ac,2)+R(hp[0]-7,hp[1]+8,14,4,dc,2)}
+if(a==13){const beanie=`<path d="M${X-hr} ${cy-hr*.3}Q${X-hr*1.15} ${cy-hr*1.55} ${X} ${cy-hr*1.4}Q${X+hr*1.15} ${cy-hr*1.55} ${X+hr} ${cy-hr*.3}Z" fill="${ac}"/>`+R(X-hr*1.02,cy-hr*.55,hr*2.04,hr*.24,dc,hr*.1);
+if(v==0)xt=beanie+`<circle cx="${X}" cy="${cy-hr*1.42}" r="${hr*.16}" fill="${lc}"/>`;
+if(v==1)xt=`<path d="M${X-hr*.8} ${cy-hr*1.1}L${X-hr*.62} ${cy-hr*1.68}L${X-hr*.28} ${cy-hr*1.35}Z M${X+hr*.8} ${cy-hr*1.1}L${X+hr*.62} ${cy-hr*1.68}L${X+hr*.28} ${cy-hr*1.35}Z" fill="${ac}"/>`+beanie;
+if(v==2)xt=E(X-hr*.38,cy-hr*2,hr*.17,hr*.58,ac)+E(X+hr*.38,cy-hr*2,hr*.17,hr*.58,ac)+E(X-hr*.38,cy-hr*2,hr*.08,hr*.42,'#ffc0d8')+E(X+hr*.38,cy-hr*2,hr*.08,hr*.42,'#ffc0d8')+beanie;
+if(v==3){xt=beanie;for(let k=-5;k<=5;k++)xt+=LN(f1(X+k*hr*.18),f1(cy-hr*.55),f1(X+k*hr*.08),f1(cy-hr*1.38),dc,1.2)}
+if(sd)xt=sq(.95,-hr*.05,xt)}
+if(a==14){const fx=sd?X-hr*.1:bk?X-hr*.7:X+hr*.7,fy=cy-hr*(sd?.85:.65);
+if(v==0)xt=`<g fill="${ac}">${flower(fx,fy,hr*.24)}</g>`;
+if(v==1)xt=`<circle cx="${f1(fx)}" cy="${f1(fy)}" r="${hr*.2}" fill="${ac}" stroke="${dc}" stroke-width=".8"/><circle cx="${f1(fx)}" cy="${f1(fy)}" r="${hr*.13}" fill="none" stroke="${dc}" stroke-width="1"/><circle cx="${f1(fx)}" cy="${f1(fy)}" r="${hr*.07}" fill="none" stroke="${dc}" stroke-width="1"/>`+E(fx+hr*.22,fy+hr*.14,hr*.1,hr*.05,'#4caf50',`transform="rotate(30 ${fx+hr*.22} ${fy+hr*.14})"`);
+if(v==2){for(let k=0;k<12;k++){const an=k*Math.PI/6,px=fx+Math.cos(an)*hr*.2,py=fy+Math.sin(an)*hr*.2;xt+=E(px,py,hr*.11,hr*.05,ac,`transform="rotate(${k*30} ${px} ${py})"`)}xt+=`<circle cx="${f1(fx)}" cy="${f1(fy)}" r="${hr*.13}" fill="#5a3a1a"/>`}
+if(v==3)xt=`<g fill="${ac}">${flower(fx,fy,hr*.17)}${flower(fx+hr*.22,fy+hr*.12,hr*.13)}${flower(fx-hr*.18,fy+hr*.16,hr*.12)}</g>`}
+if(a==16){const[hx,hy]=hP(1),tx=hx+(sd?6:16),tY=hy-Math.min(112,Math.max(46,hy-95)),Rr=v?54:44,hh=v?28:40;
+xt=LN(f1(hx),f1(hy),f1(tx),f1(tY),'#6b4a42',2.4)+`<path d="M${f1(hx)} ${f1(hy+2)}q0 7 -5 7" ${ST('#6b4a42',2.4)}/>`+`<path d="M${f1(tx-Rr)} ${f1(tY)}Q${f1(tx-Rr*.9)} ${f1(tY-hh)} ${f1(tx)} ${f1(tY-hh-6)}Q${f1(tx+Rr*.9)} ${f1(tY-hh)} ${f1(tx+Rr)} ${f1(tY)}Q${f1(tx+Rr*.67)} ${f1(tY-9)} ${f1(tx+Rr*.33)} ${f1(tY)}Q${f1(tx)} ${f1(tY-9)} ${f1(tx-Rr*.33)} ${f1(tY)}Q${f1(tx-Rr*.67)} ${f1(tY-9)} ${f1(tx-Rr)} ${f1(tY)}Z" fill="${ac}" stroke="${dc}" stroke-width="1"/>`;
+for(const k of[-.55,-.2,.2,.55])xt+=LN(f1(tx),f1(tY-hh-6),f1(tx+Rr*k*1.5),f1(tY-3),dc,1);
+if(v)for(let k=0;k<7;k++)xt+=`<circle cx="${f1(tx-Rr+k*Rr/3)}" cy="${f1(tY+(k%2?-4:0))}" r="3" fill="${lc}"/>`}
+if(a==17){const[hx,hy]=hP(sd?1:-1);
+if(v==0){const cols=[ac,'#ff8ac2','#ffd54a','#fff','#a05bd8'],pos=[0,1,2,3,4].map(k=>[hx+(k-2)*7,hy-30+(k%2)*6-(k==2?6:0)]);for(const[fxx,fyy]of pos)xt+=LN(f1(hx),f1(hy+2),f1(fxx),f1(fyy),'#3f9a4a',1.6);pos.forEach(([fxx,fyy],k)=>{xt+=`<circle cx="${f1(fxx)}" cy="${f1(fyy)}" r="6.5" fill="${cols[k]}" stroke="#0003" stroke-width=".6"/><circle cx="${f1(fxx)}" cy="${f1(fyy)}" r="2" fill="#ffd54a"/>`});xt+=E(hx,hy+3,6,3,lc)}
+if(v==1)xt=LN(f1(hx),f1(hy+4),f1(hx+6),f1(hy-80),'#aaa',1)+E(hx+6,hy-102,17,21,ac,'stroke="#0003" stroke-width=".6"')+E(hx+1,hy-110,4,6,'#fff','opacity=".5"')+`<polygon points="${f1(hx+3)},${f1(hy-81)} ${f1(hx+9)},${f1(hy-81)} ${f1(hx+6)},${f1(hy-86)}" fill="${dc}"/>`;
+if(v==2)xt=`<path d="M${f1(hx-8)} ${f1(hy-8)}L${f1(hx)} ${f1(hy+14)}L${f1(hx+8)} ${f1(hy-8)}Z" fill="#e8b96a" stroke="#0003" stroke-width=".6"/><circle cx="${f1(hx)}" cy="${f1(hy-14)}" r="9" fill="${ac}"/><circle cx="${f1(hx)}" cy="${f1(hy-25)}" r="8.5" fill="${lc}"/>`;
+if(v==3)xt=LN(f1(hx),f1(hy+4),f1(hx+6),f1(hy-78),'#aaa',1)+G(heart(hx+6,hy-96,19))}
+if(a==19){const ty2=shY+d.tor*(v==2?.45:.62);
+if(v==1){if(!sd&&!bk)xt=`<path d="M${X} ${shY-6}L${X-hr*.3} ${shY-14}L${X-hr*.3} ${shY+2}Z M${X} ${shY-6}L${X+hr*.3} ${shY-14}L${X+hr*.3} ${shY+2}Z" fill="${ac}" stroke="#0003" stroke-width=".7"/><circle cx="${X}" cy="${shY-6}" r="${hr*.06}" fill="${dc}"/>`}
+else if(!bk){if(sd)xt=`<path d="M${f1(X+xf(shY+4)-3)} ${f1(shY+4)}L${f1(X+xf(shY+10))} ${f1(shY+10)}L${f1(X+xf(ty2)+1)} ${f1(ty2)}L${f1(X+xf(shY+10)-5)} ${f1(shY+8)}Z" fill="${ac}" stroke="#0003" stroke-width=".7"/>`;
+else xt=`<path d="M${X-hr*.07} ${shY-3}L${X+hr*.07} ${shY-3}L${X+hr*.1} ${shY+6}L${X-hr*.1} ${shY+6}Z" fill="${dk(ac,.1)}" stroke="#0003" stroke-width=".6"/><path d="M${X-hr*.1} ${shY+6}L${X-hr*.14} ${ty2-6}L${X} ${ty2+6}L${X+hr*.14} ${ty2-6}L${X+hr*.1} ${shY+6}Z" fill="${ac}" stroke="#0003" stroke-width=".7"/>`+(v==3?[0,1,2].map(k=>`<circle cx="${X}" cy="${shY+14+k*hr*.3}" r="${hr*.04}" fill="${lc}"/>`).join(''):'')}}
+if(a==20){const P0=sd?[X+hr*.85,cy-hr*.3]:[X-hr*.88,cy+hr*.12],Pc=sd?[X-hr*.1,cy-hr*1.4]:[X,cy-hr*1.5],P2=sd?[X-hr*.95,cy+hr*.15]:[X+hr*.88,cy+hr*.12],ears=sd?[[X-hr*.12,cy+hr*.22]]:[[X-hr*.86,cy+hr*.15],[X+hr*.86,cy+hr*.15]];
+if(v==2){for(const[x,y]of ears)xt+=`<circle cx="${f1(x)}" cy="${f1(y)}" r="3.2" fill="${ac}" stroke="#0003" stroke-width=".6"/><path d="M${f1(x)} ${f1(y+3)}Q${f1(x)} ${f1(shY-4)} ${f1(X+(x<X?-sw*.3:sw*.3))} ${f1(shY+d.tor*.4)}" ${ST('#ddd',1.2)}/>`}
+else{xt=`<path d="M${f1(P0[0])} ${f1(P0[1])}Q${f1(Pc[0])} ${f1(Pc[1])} ${f1(P2[0])} ${f1(P2[1])}" ${ST(dk(ac,.1),5)}/>`;for(const[x,y]of ears)xt+=E(x,y,hr*.17,hr*.27,ac,'stroke="#0003" stroke-width=".7"')+E(x,y,hr*.09,hr*.17,dk(ac,.2));
+if(v==1&&!bk)xt+=sd?'':`<path d="M${f1(X-hr*.86)} ${f1(cy+hr*.4)}Q${f1(X-hr*.7)} ${f1(cy+hr*.88)} ${f1(X-hr*.2)} ${f1(cy+hr*.78)}" ${ST(ac,2)}/><circle cx="${f1(X-hr*.2)}" cy="${f1(cy+hr*.78)}" r="3" fill="${dc}"/>`}}
+if(a==18&&!bk){const pts=sd?[[ex2+es*1.15,ey+es*.95],[ex2+es*.3,ey+es*1.55],[ex2+es*1.5,ey+es*.3]]:[-1,1].flatMap(s=>[[X+s*(ex+es*1.3),ey+es*.9],[X+s*(ex+es*1.75),ey+es*.3],[X+s*(ex+es*.6),ey+es*1.5]]);
+for(const[x,y]of pts)xt+=v==0?G(star(x,y,hr*.045+1.5)):v==1?G(heart(x,y,hr*.035+1.5)):`<circle cx="${f1(x)}" cy="${f1(y)}" r="2" fill="${ac}" stroke="#0003" stroke-width=".4"/><circle cx="${f1(x-.6)}" cy="${f1(y-.6)}" r=".6" fill="#fff"/>`}
+return xt};
+let xt='',ch='',gl='',er='',scf='',bel='',brc='',bag='';
+for(let i=0;i<EXN.length;i++)if(S.xs[i]){const c=CLO[S.xc[i]],r=XF(i+1,c,S.xv[i]);
+if(i==2)ch=r;else if(i==3||i==7||i==17)gl+=r;else if(i==4)er=r;else if(i==8||i==18)scf+=r;else if(i==9)bel=r;else if(i==10)brc=r;else if(i==11||i==15||i==16)bag+=r;else xt+=r}
+const sz=[.75,1,1.25][S.petS];let PETG='',PETH='',PETS='';
+if(S.pet){const pg=PET(S.pet,PETC[S.petC],CLO[S.petC2],S.petPat,S.petAcc),pp=S.petPos;
+if(pp<2)PETG=`<g transform="translate(${pp?252:48} 498) scale(${(1.75*sz).toFixed(2)})"><ellipse rx="22" ry="4" fill="#0002"/>${pg}</g>`;
+else if(pp==2&&!bk)PETH=`<g transform="translate(${f1(sd?X+(xf(wY)-xb(wY))/2+8:X)} ${f1(wY+10)}) scale(${(1.1*sz).toFixed(2)})">${pg}</g>`;
+else if(pp==3)PETS=`<g transform="translate(${f1(sd?X+2:X+sw*.72)} ${f1(shY+3)}) scale(${(.75*sz).toFixed(2)})">${pg}</g>`}
+const skQ=!!SK[q];
+const all=b+sk2+uw+(skQ?sh:'')+btB+dB+bt+tpB+dT+tp+bel+scf+PETH+nearArm+brc+bag+(skQ?'':sh)+(bk?'':ch);
+let out;
+if(V==0)out=rot(hb)+all+hOver+rot(face+bdF+feat+gl+fh+er+xt);
+else if(V==2)out=all+rot(hb+er+xt);
+else out=hbS+all+sHead+bdS+sCap+gl+er+xt;
+if(V==3)out=`<g transform="translate(300 0) scale(-1 1)">${out}</g>`;
+$('#fig').innerHTML=defs+`${bgArt()}<ellipse cx="150" cy="498" rx="${70+hw}" ry="8" fill="#0002"/>`+PETG+out+PETS;
+S.pose=pose0;
+}
+let cur=0;
+function ui(){if(!vis(CATS[cur]))cur=0;const c=CATS[cur];const tl=$('#tabs').scrollLeft||0,ot=ui.last===cur?$('#opts').scrollTop||0:0,rl=ui.last===cur?[...document.querySelectorAll('#opts .row')].map(e=>e.scrollLeft):[];ui.last=cur;
+$('#tabs').innerHTML=CATS.map((x,i)=>vis(x)?`<button class="t${i==cur?' on':''}" data-t="${i}">${x.i}<small>${x.n}</small></button>`:'').join('');
+let h='';
+if(c.o){const nm=namesOf(c),cd=codesOf(c);h+=`<div class="row">${c.ls?`<small>${c.ls}</small>`:''}${nm.map((n,i)=>`<button class="${S[c.s]==cd[i]?'on':''}" data-s="${c.s}" data-v="${cd[i]}">${n}</button>`).join('')}</div>`}
+if(c.p)h+=`<div class="row">${c.lc?`<small>${c.lc}</small>`:''}${c.p.map((p,i)=>`<button class="sw${S[c.c]==i?' on':''}" style="background:${p}" data-s="${c.c}" data-v="${i}" aria-label="Farbe ${i+1}"></button>`).join('')}</div>`;
+if(c.e)h+=c.e.map(([k,l,a])=>RO(l,k,a)).join('');if(c.d)h+=RO(c.dl||'Muster',c.d[0],c.dlist||DECO)+RC(c.dc||'Zweitfarbe',c.d[1],c.dp||CLO);if(c.x){const g=xgOf(c);if(!g.includes(F))F=g[0];h=EXUI(g)}$('#opts').innerHTML=h;$('#opts').scrollTop=ot;$('#tabs').scrollLeft=tl;[...document.querySelectorAll('#opts .row')].forEach((e,i)=>{e.scrollLeft=rl[i]||0})}
+function save(){try{localStorage.setItem('styleStudio',JSON.stringify(S))}catch(e){}}
+try{Object.assign(S,JSON.parse(localStorage.getItem('styleStudio')||'{}'))}catch(e){}
+while(S.xs.length<EXN.length){S.xs.push(0);S.xc.push(5)}while(S.xv.length<EXN.length)S.xv.push(0);
+$('#ui').onclick=e=>{const t=e.target.closest('[data-t]'),o=e.target.closest('[data-s]'),x=e.target.closest('[data-x]'),xc=e.target.closest('[data-xc]'),xv=e.target.closest('[data-xv]');if(xv){S.xv[F]=+xv.dataset.xv;S.xs[F]=1}if(x){F=+x.dataset.x;S.xs[F]^=1}if(xc){S.xc[F]=+xc.dataset.xc;S.xs[F]=1}
+if(t)cur=+t.dataset.t;if(o){S[o.dataset.s]=+o.dataset.v;if(o.dataset.s=='sex')fixSex()}draw();ui();save()};
+const doRnd=()=>{const r=n=>Math.floor(Math.random()*n);
+CATS.forEach(c=>{if(!vis(c))return;if(c.o&&!c.e){const cd=codesOf(c);S[c.s]=cd[r(cd.length)]}if(c.o&&c.e)S[c.s]=r(3);if(c.p)S[c.c]=r(c.p.length)});S.beard=S.sex&&S.age?r(6):0;S.xs=S.xs.map((_,i)=>allowedX(i)?+(r(6)==0):0);S.xv=S.xv.map((_,i)=>r(XVN[i].length));S.xc=S.xc.map(()=>r(CLO.length));S.topD=r(6);S.topC2=r(CLO.length);S.botD=r(6);S.botC2=r(CLO.length);S.lid=r(2);S.petPat=r(3);S.petPos=r(4);S.petAcc=r(4);S.petC2=r(CLO.length);S.petS=r(3);if(r(3))S.pet=0;S.bgP=r(11);S.bgC2=r(CLO.length);S.lidC=r(SHAD.length);S.sockC=r(CLO.length);draw();ui();save()};
+const ask=(msg,yes,cb)=>{$('#dmsg').textContent=msg;$('#dyes').textContent=yes;$('#dlg').classList.add('on');$('#dno').onclick=()=>$('#dlg').classList.remove('on');$('#dyes').onclick=()=>{$('#dlg').classList.remove('on');cb()}};
+let tt;const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(tt);tt=setTimeout(()=>t.style.display='none',2400)};
+$('#rnd').onclick=()=>ask('Wirklich eine neue Zufalls-Figur erstellen? Deine jetzige Figur geht dabei verloren.','Ja, neu würfeln',doRnd);
+const makePng=()=>new Promise((res,rej)=>{const svg=$('#fig').cloneNode(true);svg.setAttribute('width','900');svg.setAttribute('height','1530');const xml=new XMLSerializer().serializeToString(svg),img=new Image();img.onload=()=>{const c=document.createElement('canvas');c.width=900;c.height=1530;c.getContext('2d').drawImage(img,0,0,900,1530);c.toBlob(b=>b?res(b):rej(new Error('png')),'image/png')};img.onerror=()=>rej(new Error('img'));img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(xml)});
+$('#pic').onclick=async()=>{try{const blob=await makePng(),name='figur-'+new Date().toISOString().slice(0,10)+'.png';const cap=window.Capacitor;if(cap&&cap.isNativePlatform&&cap.isNativePlatform()){try{const b64=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(',')[1]);fr.onerror=rej;fr.readAsDataURL(blob)});window._ps=window._ps||cap.registerPlugin('PhotoSaver');await window._ps.save({data:b64,name});toast('Foto in der Galerie gespeichert')}catch(e){toast('Speichern nicht möglich')}return}
+let dl=null;try{dl=window.claude?await claude.use('downloads'):null}catch(e){}
+if(dl){try{const r=await dl.save({filename:name,data:blob});if(r.status=='saved')toast('Foto gespeichert')}catch(e){if(!e||e.code!='declined')toast('Speichern nicht möglich')}return}
+const f=new File([blob],name,{type:'image/png'});if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:'Meine Figur'});return}catch(e){if(e&&e.name=='AbortError')return}}
+const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();toast('Foto gespeichert')}catch(e){toast('Foto konnte nicht erstellt werden')}};
+const turn=n=>{VIEW=(VIEW+n+4)%4;draw()};$('#rl').onclick=()=>turn(-1);$('#rr').onclick=()=>turn(1);
+const uiEl=$('#ui'),setMin=m=>{uiEl.classList.toggle('min',m);$('#hl').textContent=m?'▲ Aussehen ändern':'▼ Ausblenden'},isMin=()=>uiEl.classList.contains('min');
+$('#hdl').onclick=()=>setMin(!isMin());
+let px=null,x0=0,y0=0,mv=0,tb=0,t0=0;
+$('#stage').onpointerdown=e=>{px=x0=e.clientX;y0=e.clientY;mv=0;tb=!!e.target.closest('button');t0=Date.now()};
+$('#stage').onpointermove=e=>{if(px!=null){if(Math.abs(e.clientX-x0)>10||Math.abs(e.clientY-y0)>10)mv=1;if(Math.abs(e.clientX-px)>45){turn(e.clientX>px?1:-1);px=e.clientX}}};
+addEventListener('pointerup',()=>{if(px!=null&&!mv&&!tb&&Date.now()-t0<600)setMin(!isMin());px=null});
+draw();ui();
+setTimeout(()=>{try{if(!localStorage.getItem('hint1')){toast('Tipp: Tippe auf die Figur, um die Auswahl aus- und einzublenden');localStorage.setItem('hint1','1')}}catch(e){}},900);
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script></body></html>
