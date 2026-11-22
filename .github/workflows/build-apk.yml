@@ -6,16 +6,123 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
       - run: npm ci
-      - run: npx cap sync android
+      - name: Android-Projekt erzeugen und anpassen
+        run: |
+          set -e
+          echo "== Dateien im Projekt =="
+          ls -la
+          test -f www/index.html || { echo "FEHLER: www/index.html fehlt"; exit 1; }
+          test -f web/icon-512.png || { echo "FEHLER: web/icon-512.png fehlt"; exit 1; }
+          test -f capacitor.config.ts || { echo "FEHLER: capacitor.config.ts fehlt"; exit 1; }
+          rm -rf android
+          npx cap add android
+          npx cap sync android
+          R=android/app/src/main/res
+          J=android/app/src/main/java/de/stylestudio/app
+          sed -i 's/minSdkVersion = [0-9]*/minSdkVersion = 29/' android/variables.gradle
+          sed -i 's/android:launchMode="singleTask"/android:launchMode="singleTask"\n            android:screenOrientation="portrait"/' android/app/src/main/AndroidManifest.xml
+          sed -i 's/#FFFFFF/#FFE3F1/' $R/values/ic_launcher_background.xml
+          mkdir -p $J
+          cat > $J/MainActivity.java <<'EOF'
+          package de.stylestudio.app;
+
+          import android.os.Bundle;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  registerPlugin(PhotoSaverPlugin.class);
+                  super.onCreate(savedInstanceState);
+              }
+          }
+          EOF
+          cat > $J/PhotoSaverPlugin.java <<'EOF'
+          package de.stylestudio.app;
+
+          import android.content.ContentResolver;
+          import android.content.ContentValues;
+          import android.net.Uri;
+          import android.provider.MediaStore;
+          import android.util.Base64;
+          import com.getcapacitor.JSObject;
+          import com.getcapacitor.Plugin;
+          import com.getcapacitor.PluginCall;
+          import com.getcapacitor.PluginMethod;
+          import com.getcapacitor.annotation.CapacitorPlugin;
+          import java.io.OutputStream;
+
+          @CapacitorPlugin(name = "PhotoSaver")
+          public class PhotoSaverPlugin extends Plugin {
+
+              @PluginMethod
+              public void save(PluginCall call) {
+                  String data = call.getString("data");
+                  String name = call.getString("name", "figur.png");
+                  if (data == null) {
+                      call.reject("Keine Bilddaten");
+                      return;
+                  }
+                  try {
+                      byte[] bytes = Base64.decode(data, Base64.DEFAULT);
+                      ContentResolver resolver = getContext().getContentResolver();
+                      ContentValues values = new ContentValues();
+                      values.put(MediaStore.Images.Media.DISPLAY_NAME, name);
+                      values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+                      values.put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Style-Studio");
+                      values.put(MediaStore.Images.Media.IS_PENDING, 1);
+                      Uri uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+                      if (uri == null) {
+                          call.reject("Datei konnte nicht angelegt werden");
+                          return;
+                      }
+                      try (OutputStream out = resolver.openOutputStream(uri)) {
+                          if (out == null) {
+                              call.reject("Datei konnte nicht geschrieben werden");
+                              return;
+                          }
+                          out.write(bytes);
+                      }
+                      values.clear();
+                      values.put(MediaStore.Images.Media.IS_PENDING, 0);
+                      resolver.update(uri, values, null, null);
+                      JSObject result = new JSObject();
+                      result.put("uri", uri.toString());
+                      call.resolve(result);
+                  } catch (Exception e) {
+                      call.reject(e.getMessage());
+                  }
+              }
+          }
+          EOF
+          # Icons aus web/icon-512.png
+          convert web/icon-512.png -resize 66% -background '#FFE3F1' -gravity center -extent 512x512 /tmp/fg.png
+          for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            cp web/icon-512.png $R/mipmap-$d/ic_launcher.png
+            cp web/icon-512.png $R/mipmap-$d/ic_launcher_round.png
+            cp /tmp/fg.png $R/mipmap-$d/ic_launcher_foreground.png
+          done
+          # Startbild: einfarbig rosa
+          find $R -name 'splash.png' -delete
+          mkdir -p $R/drawable
+          cat > $R/drawable/splash.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+              <solid android:color="#FFE3F1" />
+          </shape>
+          EOF
+          echo "== Anpassungen fertig =="
+          grep -n minSdk android/variables.gradle
+          grep -n screenOrientation android/app/src/main/AndroidManifest.xml
       - run: chmod +x android/gradlew
       - run: cd android && ./gradlew assembleDebug
       - uses: actions/upload-artifact@v4
