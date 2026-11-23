@@ -107,6 +107,9 @@ jobs:
               }
           }
           EOF
+          # ImageMagick installieren
+          sudo apt-get update && sudo apt-get install -y imagemagick
+          
           # Icons aus web/icon-512.png
           convert web/icon-512.png -resize 66% -background '#FFE3F1' -gravity center -extent 512x512 /tmp/fg.png
           for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
