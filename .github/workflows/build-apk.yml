@@ -22,7 +22,10 @@ jobs:
           ls -la
           test -f www/index.html || { echo "FEHLER: www/index.html fehlt"; exit 1; }
           test -f web/icon-512.png || { echo "FEHLER: web/icon-512.png fehlt"; exit 1; }
-          test -f capacitor.config.ts || { echo "FEHLER: capacitor.config.ts fehlt"; exit 1; }
+          rm -f capacitor.config.ts
+          cat > capacitor.config.json <<'EOF'
+          {"appId":"de.stylestudio.app","appName":"Style Studio","webDir":"www","backgroundColor":"#FFE3F1"}
+          EOF
           rm -rf android
           npx cap add android
           npx cap sync android
